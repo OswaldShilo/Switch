@@ -1,0 +1,16 @@
+{
+  "name": "switch-monorepo",
+  "private": true,
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:generate": "pnpm --filter @switch/server db:generate",
+    "db:migrate": "pnpm --filter @switch/server db:migrate",
+    "db:seed": "pnpm --filter @switch/server db:seed",
+    "test": "pnpm --filter @switch/server test"
+  }
+}

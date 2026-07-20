@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: switch-postgres
+    environment:
+      POSTGRES_USER: switch
+      POSTGRES_PASSWORD: switch_dev_password
+      POSTGRES_DB: switch_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - switch_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U switch -d switch_dev"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  switch_pg_data:
