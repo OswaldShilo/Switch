@@ -6,6 +6,8 @@ const NAV_LINKS = [
   { href: '/dashboard/spending', label: 'Spending' },
   { href: '/dashboard/subscriptions', label: 'Subscriptions' },
   { href: '/dashboard/consents', label: 'Consents' },
+  { href: '/dashboard/chat', label: 'Chat' },
+  { href: '/dashboard/memory', label: 'Memory' },
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../client.js';
-import { accounts, auditLog, categoryRules, consents, transactions, users } from '../schema.js';
+import { accounts, auditLog, categoryRules, chatMessages, consents, memories, transactions, users } from '../schema.js';
 import { generateMockDataset } from './mockData.js';
 
 export async function runSeed(referenceDate: Date = new Date()) {
@@ -20,6 +20,10 @@ export async function runSeed(referenceDate: Date = new Date()) {
     // category_rules rows can also reference users.id (user-specific overrides/corrections,
     // M2+); clear the demo user's own rules before deleting the user for the same reason.
     await db.delete(categoryRules).where(eq(categoryRules.userId, userId));
+    // memories and chat_messages (M4) reference users.id with no cascade too; a demo user
+    // accrues both the moment remember/recall or the chat loop runs against it in tests.
+    await db.delete(memories).where(eq(memories.userId, userId));
+    await db.delete(chatMessages).where(eq(chatMessages.userId, userId));
     await db.delete(accounts).where(eq(accounts.userId, userId));
     await db.delete(consents).where(eq(consents.userId, userId));
     await db.delete(users).where(eq(users.id, userId));

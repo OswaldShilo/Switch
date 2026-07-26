@@ -5,6 +5,7 @@ import { listSupportedBanksTool } from './tools/banks.js';
 import { categorizeTransactionsTool } from './tools/categorize.js';
 import { checkConsentStatusTool, getConsentDetailsTool, initiateConsentTool } from './tools/consent.js';
 import { getDataStatusTool, requestFinancialDataTool } from './tools/dataFetch.js';
+import { recallTool, rememberTool } from './tools/memory.js';
 import { summarizeFinancesTool } from './tools/summarize.js';
 import { fetchTransactionsTool } from './tools/transactions.js';
 import {
@@ -15,6 +16,8 @@ import {
   getConsentDetailsInputSchema,
   getDataStatusInputSchema,
   initiateConsentInputSchema,
+  recallInputSchema,
+  rememberInputSchema,
   requestFinancialDataInputSchema,
   summarizeFinancesInputSchema,
 } from './schemas.js';
@@ -30,6 +33,8 @@ export const TOOL_NAMES = [
   'fetch_transactions',
   'categorize_transactions',
   'summarize_finances',
+  'remember',
+  'recall',
 ] as const;
 
 function toContent(result: { ok: boolean; data?: unknown; error?: unknown }) {
@@ -161,6 +166,26 @@ export function createMcpServer(): McpServer {
           metrics: args.metrics,
         })
       );
+    }
+  );
+
+  server.tool(
+    'remember',
+    'Store an explicit fact, preference, or standing rule the user asked to be remembered',
+    rememberInputSchema.shape,
+    async (args) => {
+      const userId = await getDemoUserId();
+      return toContent(await rememberTool(userId, { type: args.type, content: args.content, tags: args.tags }));
+    }
+  );
+
+  server.tool(
+    'recall',
+    'Recall previously remembered facts, preferences, or rules, filtered by tags or a text query',
+    recallInputSchema.shape,
+    async (args) => {
+      const userId = await getDemoUserId();
+      return toContent(await recallTool(userId, { query: args.query, tags: args.tags, limit: args.limit }));
     }
   );
 

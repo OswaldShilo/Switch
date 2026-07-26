@@ -51,3 +51,15 @@ export const summarizeFinancesInputSchema = z.object({
     z.enum(['spend_by_category', 'income', 'savings_rate', 'recurring_subscriptions', 'top_merchants', 'mom_trend'])
   ),
 });
+
+export const rememberInputSchema = z.object({
+  type: z.enum(['explicit', 'implicit']).optional(),
+  content: z.string(),
+  tags: z.array(z.string()),
+});
+
+export const recallInputSchema = z.object({
+  query: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  limit: z.number().int().positive().optional(),
+});
