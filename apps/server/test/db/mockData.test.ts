@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateMockDataset } from '../../src/db/seed/mockData.js';
+import { generateMockAccountData, generateMockDataset } from '../../src/db/seed/mockData.js';
 
 describe('generateMockDataset', () => {
   const dataset = generateMockDataset(new Date('2026-07-20T00:00:00Z'));
@@ -61,5 +61,27 @@ describe('generateMockDataset', () => {
   it('is deterministic for a fixed reference date', () => {
     const second = generateMockDataset(new Date('2026-07-20T00:00:00Z'));
     expect(second).toEqual(dataset);
+  });
+});
+
+describe('generateMockAccountData', () => {
+  const now = new Date('2026-07-20T00:00:00Z');
+
+  it('returns the HDFC account and its transactions for fip_id "hdfc-bank"', () => {
+    const result = generateMockAccountData('hdfc-bank', now);
+    expect(result).not.toBeNull();
+    expect(result?.account.bank).toBe('HDFC Bank');
+    expect(result?.transactions.every((t) => t.accountKey === result.account.key)).toBe(true);
+  });
+
+  it('returns null for an unknown fip_id', () => {
+    expect(generateMockAccountData('unknown-bank', now)).toBeNull();
+  });
+
+  it('matches the transactions for that account in the full dataset', () => {
+    const full = generateMockDataset(now);
+    const result = generateMockAccountData('icici-bank', now);
+    const expected = full.transactions.filter((t) => t.accountKey === 'acc2');
+    expect(result?.transactions).toEqual(expected);
   });
 });

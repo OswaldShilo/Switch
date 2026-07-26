@@ -165,3 +165,16 @@ export function generateMockDataset(now: Date): MockDataset {
     transactions,
   };
 }
+
+export function generateMockAccountData(
+  fipId: string,
+  now: Date
+): { account: MockAccount; transactions: MockTransaction[] } | null {
+  const dataset = generateMockDataset(now);
+  const account = dataset.accounts.find((a) => a.bank.toLowerCase().replace(/\s+/g, '-') === fipId);
+  if (!account) {
+    return null;
+  }
+  const transactions = dataset.transactions.filter((t) => t.accountKey === account.key);
+  return { account, transactions };
+}
