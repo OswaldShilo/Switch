@@ -3,9 +3,11 @@ import { randomUUID } from 'node:crypto';
 import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createMcpServer } from './mcp/server.js';
+import { apiRouter } from './rest/router.js';
 
 const app = express();
 app.use(express.json());
+app.use('/api', apiRouter);
 
 const transports = new Map<string, StreamableHTTPServerTransport>();
 

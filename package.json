@@ -11,6 +11,6 @@
     "db:generate": "pnpm --filter @switch/server db:generate",
     "db:migrate": "pnpm --filter @switch/server db:migrate",
     "db:seed": "pnpm --filter @switch/server db:seed",
-    "test": "pnpm --filter @switch/server test"
+    "test": "pnpm -r --if-present run test"
   }
 }
