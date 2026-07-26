@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { requireConnectorToken } from './auth/requireConnectorToken.js';
 import { createMcpServer } from './mcp/server.js';
 import { apiRouter } from './rest/router.js';
 
@@ -11,12 +12,12 @@ app.use('/api', apiRouter);
 
 const transports = new Map<string, StreamableHTTPServerTransport>();
 
-app.post('/mcp', async (req, res) => {
+app.post('/mcp', requireConnectorToken, async (req, res) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   let transport = sessionId ? transports.get(sessionId) : undefined;
 
   if (!transport) {
-    const server = createMcpServer();
+    const server = createMcpServer(req.userId!);
     transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (id) => {
@@ -42,7 +43,7 @@ app.post('/mcp', async (req, res) => {
   await transport.handleRequest(req, res, req.body);
 });
 
-app.get('/mcp', async (req, res) => {
+app.get('/mcp', requireConnectorToken, async (req, res) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const transport = sessionId ? transports.get(sessionId) : undefined;
   if (!transport) {
@@ -52,7 +53,7 @@ app.get('/mcp', async (req, res) => {
   await transport.handleRequest(req, res);
 });
 
-app.delete('/mcp', async (req, res) => {
+app.delete('/mcp', requireConnectorToken, async (req, res) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const transport = sessionId ? transports.get(sessionId) : undefined;
   if (!transport) {

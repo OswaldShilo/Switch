@@ -1,5 +1,4 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { getDemoUserId } from '../adapter/demoUser.js';
 import { fetchAccountsTool } from './tools/accounts.js';
 import { listSupportedBanksTool } from './tools/banks.js';
 import { categorizeTransactionsTool } from './tools/categorize.js';
@@ -44,11 +43,10 @@ function toContent(result: { ok: boolean; data?: unknown; error?: unknown }) {
   };
 }
 
-export function createMcpServer(): McpServer {
+export function createMcpServer(userId: string): McpServer {
   const server = new McpServer({ name: 'switch-aa-connect', version: '0.1.0' });
 
   server.tool('list_supported_banks', 'List AA-supported banks in mock mode', {}, async () => {
-    const userId = await getDemoUserId();
     return toContent(await listSupportedBanksTool(userId));
   });
 
@@ -57,7 +55,6 @@ export function createMcpServer(): McpServer {
     'Start an AA consent request for a bank account',
     initiateConsentInputSchema.shape,
     async (args) => {
-      const userId = await getDemoUserId();
       return toContent(
         await initiateConsentTool(userId, {
           mobile: args.mobile,
@@ -77,7 +74,6 @@ export function createMcpServer(): McpServer {
     'Check the status of a previously initiated consent',
     checkConsentStatusInputSchema.shape,
     async (args) => {
-      const userId = await getDemoUserId();
       return toContent(await checkConsentStatusTool(userId, { consentId: args.consent_id }));
     }
   );
@@ -87,7 +83,6 @@ export function createMcpServer(): McpServer {
     'Get the full details of a consent (purpose, FI types, date range, expiry)',
     getConsentDetailsInputSchema.shape,
     async (args) => {
-      const userId = await getDemoUserId();
       return toContent(await getConsentDetailsTool(userId, { consentId: args.consent_id }));
     }
   );
@@ -97,7 +92,6 @@ export function createMcpServer(): McpServer {
     'Kick off a financial institution data fetch for an active consent',
     requestFinancialDataInputSchema.shape,
     async (args) => {
-      const userId = await getDemoUserId();
       return toContent(await requestFinancialDataTool(userId, { consentId: args.consent_id }));
     }
   );
@@ -107,7 +101,6 @@ export function createMcpServer(): McpServer {
     'Poll the status of a financial data fetch session',
     getDataStatusInputSchema.shape,
     async (args) => {
-      const userId = await getDemoUserId();
       return toContent(await getDataStatusTool(userId, { sessionId: args.session_id }));
     }
   );
@@ -117,7 +110,6 @@ export function createMcpServer(): McpServer {
     'List accounts fetched under an active consent',
     fetchAccountsInputSchema.shape,
     async (args) => {
-      const userId = await getDemoUserId();
       return toContent(await fetchAccountsTool(userId, { consentId: args.consent_id }));
     }
   );
@@ -127,7 +119,6 @@ export function createMcpServer(): McpServer {
     'Fetch paginated transactions for an account',
     fetchTransactionsInputSchema.shape,
     async (args) => {
-      const userId = await getDemoUserId();
       return toContent(
         await fetchTransactionsTool(userId, {
           accountId: args.account_id,
@@ -146,7 +137,6 @@ export function createMcpServer(): McpServer {
     'Categorize an account\'s transactions using the rule engine first, LLM fallback second',
     categorizeTransactionsInputSchema.shape,
     async (args) => {
-      const userId = await getDemoUserId();
       return toContent(
         await categorizeTransactionsTool(userId, { accountId: args.account_id, force: args.force })
       );
@@ -158,7 +148,6 @@ export function createMcpServer(): McpServer {
     'Compute SQL-aggregated financial metrics for an account over a date range',
     summarizeFinancesInputSchema.shape,
     async (args) => {
-      const userId = await getDemoUserId();
       return toContent(
         await summarizeFinancesTool(userId, {
           accountId: args.account_id,
@@ -174,7 +163,6 @@ export function createMcpServer(): McpServer {
     'Store an explicit fact, preference, or standing rule the user asked to be remembered',
     rememberInputSchema.shape,
     async (args) => {
-      const userId = await getDemoUserId();
       return toContent(await rememberTool(userId, { type: args.type, content: args.content, tags: args.tags }));
     }
   );
@@ -184,7 +172,6 @@ export function createMcpServer(): McpServer {
     'Recall previously remembered facts, preferences, or rules, filtered by tags or a text query',
     recallInputSchema.shape,
     async (args) => {
-      const userId = await getDemoUserId();
       return toContent(await recallTool(userId, { query: args.query, tags: args.tags, limit: args.limit }));
     }
   );

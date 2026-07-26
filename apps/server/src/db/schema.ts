@@ -79,6 +79,10 @@ export const transactions = pgTable('transactions', {
   category: text('category'),
   confidence: numeric('confidence', { precision: 3, scale: 2 }),
   categorizedBy: categorizedByEnum('categorized_by'),
+  // Verbatim { txnId, reference, mode, transactionTimestamp } from the FIP response, for
+  // real-adapter-ingested rows only (see finvuAdapter.ts). null for mock-mode rows. Also
+  // doubles as the idempotent re-fetch dedup key (sourceMetadata->>'txnId').
+  sourceMetadata: jsonb('source_metadata'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
