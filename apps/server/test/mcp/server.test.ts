@@ -21,7 +21,7 @@ describe('createMcpServer', () => {
     await pool.end();
   });
 
-  it('registers exactly the 8 M1 tools', async () => {
+  it('registers exactly the 10 M1+M2 tools', async () => {
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name).sort();
     expect(names).toEqual([...TOOL_NAMES].sort());

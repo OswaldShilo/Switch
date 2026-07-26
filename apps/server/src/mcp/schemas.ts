@@ -38,3 +38,16 @@ export const fetchTransactionsInputSchema = z.object({
   limit: z.number().int().positive().optional(),
   cursor: z.string().optional(),
 });
+
+export const categorizeTransactionsInputSchema = z.object({
+  account_id: z.string(),
+  force: z.boolean().optional(),
+});
+
+export const summarizeFinancesInputSchema = z.object({
+  account_id: z.string(),
+  period: z.object({ from: z.string(), to: z.string() }),
+  metrics: z.array(
+    z.enum(['spend_by_category', 'income', 'savings_rate', 'recurring_subscriptions', 'top_merchants', 'mom_trend'])
+  ),
+});

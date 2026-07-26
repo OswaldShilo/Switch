@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../client.js';
-import { accounts, auditLog, consents, transactions, users } from '../schema.js';
+import { accounts, auditLog, categoryRules, consents, transactions, users } from '../schema.js';
 import { generateMockDataset } from './mockData.js';
 
 export async function runSeed(referenceDate: Date = new Date()) {
@@ -17,6 +17,9 @@ export async function runSeed(referenceDate: Date = new Date()) {
     // rows the moment any MCP tool runs against it (via withAudit), so they must be
     // cleared before the user can be deleted and re-seeded.
     await db.delete(auditLog).where(eq(auditLog.userId, userId));
+    // category_rules rows can also reference users.id (user-specific overrides/corrections,
+    // M2+); clear the demo user's own rules before deleting the user for the same reason.
+    await db.delete(categoryRules).where(eq(categoryRules.userId, userId));
     await db.delete(accounts).where(eq(accounts.userId, userId));
     await db.delete(consents).where(eq(consents.userId, userId));
     await db.delete(users).where(eq(users.id, userId));

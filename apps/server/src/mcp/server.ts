@@ -2,10 +2,13 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getDemoUserId } from '../adapter/demoUser.js';
 import { fetchAccountsTool } from './tools/accounts.js';
 import { listSupportedBanksTool } from './tools/banks.js';
+import { categorizeTransactionsTool } from './tools/categorize.js';
 import { checkConsentStatusTool, getConsentDetailsTool, initiateConsentTool } from './tools/consent.js';
 import { getDataStatusTool, requestFinancialDataTool } from './tools/dataFetch.js';
+import { summarizeFinancesTool } from './tools/summarize.js';
 import { fetchTransactionsTool } from './tools/transactions.js';
 import {
+  categorizeTransactionsInputSchema,
   checkConsentStatusInputSchema,
   fetchAccountsInputSchema,
   fetchTransactionsInputSchema,
@@ -13,6 +16,7 @@ import {
   getDataStatusInputSchema,
   initiateConsentInputSchema,
   requestFinancialDataInputSchema,
+  summarizeFinancesInputSchema,
 } from './schemas.js';
 
 export const TOOL_NAMES = [
@@ -24,6 +28,8 @@ export const TOOL_NAMES = [
   'get_data_status',
   'fetch_accounts',
   'fetch_transactions',
+  'categorize_transactions',
+  'summarize_finances',
 ] as const;
 
 function toContent(result: { ok: boolean; data?: unknown; error?: unknown }) {
@@ -125,6 +131,34 @@ export function createMcpServer(): McpServer {
           category: args.category,
           limit: args.limit,
           cursor: args.cursor,
+        })
+      );
+    }
+  );
+
+  server.tool(
+    'categorize_transactions',
+    'Categorize an account\'s transactions using the rule engine first, LLM fallback second',
+    categorizeTransactionsInputSchema.shape,
+    async (args) => {
+      const userId = await getDemoUserId();
+      return toContent(
+        await categorizeTransactionsTool(userId, { accountId: args.account_id, force: args.force })
+      );
+    }
+  );
+
+  server.tool(
+    'summarize_finances',
+    'Compute SQL-aggregated financial metrics for an account over a date range',
+    summarizeFinancesInputSchema.shape,
+    async (args) => {
+      const userId = await getDemoUserId();
+      return toContent(
+        await summarizeFinancesTool(userId, {
+          accountId: args.account_id,
+          period: args.period,
+          metrics: args.metrics,
         })
       );
     }
