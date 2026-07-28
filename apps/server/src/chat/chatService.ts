@@ -17,7 +17,7 @@ export type AskClaudeFn = (params: {
 // rest of sendChatMessage's loop still speaks in Anthropic's Message/tool_use
 // shapes (that's the AskClaudeFn boundary tests already inject a stub through),
 // so this function's only job is translating in and back out.
-const askClaudeWithOpenRouter: AskClaudeFn = async ({ system, messages, tools }) => {
+export const askClaudeWithOpenRouter: AskClaudeFn = async ({ system, messages, tools }) => {
   const client = new OpenAI({
     apiKey: process.env.OPEN_ROUTER_API_KEY,
     baseURL: 'https://openrouter.ai/api/v1',
@@ -38,11 +38,17 @@ const askClaudeWithOpenRouter: AskClaudeFn = async ({ system, messages, tools })
       openAiMessages.push({
         role: 'assistant',
         content: text || null,
-        tool_calls: toolUses.map((t) => ({
-          id: t.id,
-          type: 'function',
-          function: { name: t.name, arguments: JSON.stringify(t.input) },
-        })),
+        // OpenAI/OpenRouter rejects an empty tool_calls array, so only include
+        // the field at all when there's at least one tool_use block to report.
+        ...(toolUses.length > 0
+          ? {
+              tool_calls: toolUses.map((t) => ({
+                id: t.id,
+                type: 'function' as const,
+                function: { name: t.name, arguments: JSON.stringify(t.input) },
+              })),
+            }
+          : {}),
       });
       continue;
     }

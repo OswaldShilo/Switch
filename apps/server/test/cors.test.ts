@@ -1,8 +1,9 @@
 import cors from 'cors';
 import express from 'express';
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiRouter } from '../src/rest/router.js';
+import { warnIfWebOriginMissing } from '../src/corsOriginGuard.js';
 
 // Mirrors exactly the middleware apps/server/src/index.ts wires up, built as its
 // own tiny app here so this test doesn't depend on every other REST test file's
@@ -33,5 +34,23 @@ describe('CORS', () => {
       .set('Access-Control-Request-Method', 'POST');
 
     expect(res.headers['access-control-allow-origin']).not.toBe('http://evil.example.com');
+  });
+});
+
+describe('warnIfWebOriginMissing', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('warns when WEB_ORIGIN is not set', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    warnIfWebOriginMissing({});
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('WEB_ORIGIN is not set'));
+  });
+
+  it('does not warn when WEB_ORIGIN is set', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    warnIfWebOriginMissing({ WEB_ORIGIN: 'http://localhost:3000' });
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });
