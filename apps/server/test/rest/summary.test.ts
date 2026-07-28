@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
@@ -33,7 +33,11 @@ describe('GET /api/accounts/:id/summary', () => {
   beforeAll(async () => {
     process.env.SUPABASE_JWT_SECRET = TEST_SECRET;
     await runSeed(new Date('2026-07-20T00:00:00Z'));
-    const [account] = await db.select().from(accounts).where(eq(accounts.bank, 'HDFC Bank'));
+    const demoUserId = await getOrCreateUserByEmail(DEMO_USER_EMAIL);
+    const [account] = await db
+      .select()
+      .from(accounts)
+      .where(and(eq(accounts.userId, demoUserId), eq(accounts.bank, 'HDFC Bank')));
     hdfcAccountId = account.id;
 
     const otherUserId = await getOrCreateUserByEmail(OTHER_USER_EMAIL);

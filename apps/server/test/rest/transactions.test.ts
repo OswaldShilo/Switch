@@ -7,6 +7,7 @@ import { db, pool } from '../../src/db/client.js';
 import { accounts } from '../../src/db/schema.js';
 import { runSeed } from '../../src/db/seed/seed.js';
 import { DEMO_USER_EMAIL } from '../../src/adapter/demoUser.js';
+import { getOrCreateUserByEmail } from '../../src/adapter/users.js';
 import { apiRouter } from '../../src/rest/router.js';
 
 const TEST_SECRET = 'test-secret-for-rest-transactions-spec';
@@ -28,7 +29,13 @@ describe('GET /api/accounts/:id/transactions', () => {
   beforeAll(async () => {
     process.env.SUPABASE_JWT_SECRET = TEST_SECRET;
     await runSeed(new Date('2026-07-20T00:00:00Z'));
-    const [account] = await db.select().from(accounts).orderBy(accounts.bank).limit(1);
+    const demoUserId = await getOrCreateUserByEmail(DEMO_USER_EMAIL);
+    const [account] = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.userId, demoUserId))
+      .orderBy(accounts.bank)
+      .limit(1);
     accountId = account.id;
   });
 

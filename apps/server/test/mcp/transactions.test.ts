@@ -13,7 +13,7 @@ describe('fetchTransactionsTool', () => {
   beforeAll(async () => {
     await runSeed(new Date('2026-07-20T00:00:00Z'));
     userId = await getDemoUserId();
-    const [account] = await db.select().from(accounts).orderBy(accounts.bank).limit(1);
+    const [account] = await db.select().from(accounts).where(eq(accounts.userId, userId)).orderBy(accounts.bank).limit(1);
     accountId = account.id;
   });
 

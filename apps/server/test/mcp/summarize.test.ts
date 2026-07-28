@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { db, pool } from '../../src/db/client.js';
 import { accounts } from '../../src/db/schema.js';
@@ -15,7 +15,7 @@ describe('summarizeFinancesTool', () => {
   beforeAll(async () => {
     await runSeed(new Date('2026-07-20T00:00:00Z'));
     userId = await getDemoUserId();
-    const [account] = await db.select().from(accounts).where(eq(accounts.bank, 'HDFC Bank'));
+    const [account] = await db.select().from(accounts).where(and(eq(accounts.userId, userId), eq(accounts.bank, 'HDFC Bank')));
     accountId = account.id;
   });
 

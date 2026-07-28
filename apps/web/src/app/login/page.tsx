@@ -1,13 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { getSupabaseBrowserClient } from '@/lib/supabaseClient';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [status, setStatus] = useState<'checking' | 'idle' | 'sending' | 'sent' | 'error'>('checking');
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+
+    async function handleAuthRedirect() {
+      const hash = new URLSearchParams(window.location.hash.slice(1));
+      const access_token = hash.get('access_token');
+      const refresh_token = hash.get('refresh_token');
+
+      if (access_token && refresh_token) {
+        const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+        window.history.replaceState(null, '', window.location.pathname);
+        if (sessionError) {
+          setStatus('error');
+          setError(sessionError.message);
+          return;
+        }
+        router.replace('/dashboard');
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.replace('/dashboard');
+        return;
+      }
+      setStatus('idle');
+    }
+
+    handleAuthRedirect();
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,6 +54,14 @@ export default function LoginPage() {
       return;
     }
     setStatus('sent');
+  }
+
+  if (status === 'checking') {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-muted-foreground">Checking session…</p>
+      </div>
+    );
   }
 
   return (

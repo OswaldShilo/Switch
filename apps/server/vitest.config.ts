@@ -5,6 +5,7 @@ export default defineConfig({
     environment: 'node',
     globals: false,
     testTimeout: 15000,
+    setupFiles: ['./test/setup.ts'],
     // All integration tests share one Postgres DB and re-seed a single demo user
     // (email demo@switch.app) in their own beforeAll via runSeed(). Vitest's default
     // file parallelism runs test files concurrently in separate workers, which races
