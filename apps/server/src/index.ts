@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
+import cors from 'cors';
 import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { requireConnectorToken } from './auth/requireConnectorToken.js';
@@ -7,6 +8,7 @@ import { createMcpServer } from './mcp/server.js';
 import { apiRouter } from './rest/router.js';
 
 const app = express();
+app.use(cors({ origin: process.env.WEB_ORIGIN, credentials: true }));
 app.use(express.json());
 app.use('/api', apiRouter);
 
