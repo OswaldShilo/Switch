@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { pool } from '../client.js';
 import { runSeed } from './seed.js';
 
-runSeed()
+runSeed(new Date(), process.env.SEED_USER_EMAIL)
   .then(async (result) => {
     console.log(`Seeded ${result.accountCount} accounts, ${result.transactionCount} transactions for user ${result.userId}`);
     await pool.end();

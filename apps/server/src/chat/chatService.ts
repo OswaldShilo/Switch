@@ -1,4 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { db } from '../db/client.js';
 import { chatMessages } from '../db/schema.js';
@@ -11,9 +12,93 @@ export type AskClaudeFn = (params: {
   tools: Anthropic.Tool[];
 }) => Promise<Anthropic.Message>;
 
-const askClaudeWithApi: AskClaudeFn = async (params) => {
-  const client = new Anthropic();
-  return client.messages.create({ model: 'claude-sonnet-4-5', max_tokens: 1024, ...params });
+// No Anthropic API key available for this deployment, so the model is called
+// through OpenRouter's OpenAI-compatible chat completions API instead. The
+// rest of sendChatMessage's loop still speaks in Anthropic's Message/tool_use
+// shapes (that's the AskClaudeFn boundary tests already inject a stub through),
+// so this function's only job is translating in and back out.
+const askClaudeWithOpenRouter: AskClaudeFn = async ({ system, messages, tools }) => {
+  const client = new OpenAI({
+    apiKey: process.env.OPEN_ROUTER_API_KEY,
+    baseURL: 'https://openrouter.ai/api/v1',
+  });
+
+  const openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [{ role: 'system', content: system }];
+  for (const m of messages) {
+    if (typeof m.content === 'string') {
+      openAiMessages.push({ role: m.role, content: m.content });
+      continue;
+    }
+    if (m.role === 'assistant') {
+      const text = m.content
+        .filter((b): b is Anthropic.TextBlockParam => b.type === 'text')
+        .map((b) => b.text)
+        .join('');
+      const toolUses = m.content.filter((b): b is Anthropic.ToolUseBlockParam => b.type === 'tool_use');
+      openAiMessages.push({
+        role: 'assistant',
+        content: text || null,
+        tool_calls: toolUses.map((t) => ({
+          id: t.id,
+          type: 'function',
+          function: { name: t.name, arguments: JSON.stringify(t.input) },
+        })),
+      });
+      continue;
+    }
+    for (const block of m.content as Anthropic.ToolResultBlockParam[]) {
+      openAiMessages.push({
+        role: 'tool',
+        tool_call_id: block.tool_use_id,
+        content: typeof block.content === 'string' ? block.content : JSON.stringify(block.content ?? ''),
+      });
+    }
+  }
+
+  const openAiTools: OpenAI.Chat.ChatCompletionTool[] = tools.map((t) => ({
+    type: 'function',
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.input_schema as Record<string, unknown>,
+    },
+  }));
+
+  const completion = await client.chat.completions.create({
+    model: 'anthropic/claude-haiku-4.5',
+    max_tokens: 1024,
+    messages: openAiMessages,
+    tools: openAiTools,
+  });
+
+  const choice = completion.choices[0].message;
+  const content: Anthropic.ContentBlock[] = [];
+  if (choice.content) {
+    content.push({ type: 'text', text: choice.content });
+  }
+  for (const call of choice.tool_calls ?? []) {
+    if (call.type !== 'function') continue;
+    content.push({
+      type: 'tool_use',
+      id: call.id,
+      name: call.function.name,
+      input: JSON.parse(call.function.arguments || '{}'),
+    });
+  }
+
+  return {
+    id: completion.id,
+    type: 'message',
+    role: 'assistant',
+    model: completion.model,
+    content,
+    stop_reason: choice.tool_calls?.length ? 'tool_use' : 'end_turn',
+    stop_sequence: null,
+    usage: {
+      input_tokens: completion.usage?.prompt_tokens ?? 0,
+      output_tokens: completion.usage?.completion_tokens ?? 0,
+    },
+  } as Anthropic.Message;
 };
 
 const MAX_ROUNDS = 5;
@@ -23,7 +108,7 @@ export async function sendChatMessage(
   message: string,
   opts: { askClaude?: AskClaudeFn } = {}
 ): Promise<{ reply: string; toolCalls: string[] }> {
-  const askClaude = opts.askClaude ?? askClaudeWithApi;
+  const askClaude = opts.askClaude ?? askClaudeWithOpenRouter;
   const tools: Anthropic.Tool[] = CHAT_TOOLS.map((t) => ({
     name: t.name,
     description: t.description,

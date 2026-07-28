@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { CATEGORIES } from './taxonomy.js';
 
 export interface UncategorizedTxn {
@@ -13,10 +13,16 @@ export interface LlmCategorization {
 }
 export type ClassifyBatchFn = (txns: UncategorizedTxn[]) => Promise<LlmCategorization[]>;
 
+// No Anthropic API key available for this deployment, so this fallback (only
+// reached for transactions the rule engine can't categorize) goes through
+// OpenRouter's OpenAI-compatible API instead.
 export const classifyBatchWithClaude: ClassifyBatchFn = async (txns) => {
-  const client = new Anthropic();
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-5',
+  const client = new OpenAI({
+    apiKey: process.env.OPEN_ROUTER_API_KEY,
+    baseURL: 'https://openrouter.ai/api/v1',
+  });
+  const completion = await client.chat.completions.create({
+    model: 'anthropic/claude-haiku-4.5',
     max_tokens: 2048,
     messages: [
       {
@@ -28,10 +34,7 @@ export const classifyBatchWithClaude: ClassifyBatchFn = async (txns) => {
       },
     ],
   });
-  const text = message.content
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('');
+  const text = completion.choices[0].message.content ?? '';
   const parsed = JSON.parse(text) as Array<{ txn_id: string; category: string; confidence: number }>;
   return parsed.map((p) => ({ txnId: p.txn_id, category: p.category, confidence: p.confidence }));
 };

@@ -3,10 +3,11 @@ import { db } from '../client.js';
 import { accounts, auditLog, categoryRules, chatMessages, consents, memories, transactions, users } from '../schema.js';
 import { generateMockDataset } from './mockData.js';
 
-export async function runSeed(referenceDate: Date = new Date()) {
+export async function runSeed(referenceDate: Date = new Date(), emailOverride?: string) {
   const dataset = generateMockDataset(referenceDate);
+  const userEmail = emailOverride ?? dataset.userEmail;
 
-  const existing = await db.select().from(users).where(eq(users.email, dataset.userEmail));
+  const existing = await db.select().from(users).where(eq(users.email, userEmail));
   if (existing.length > 0) {
     const userId = existing[0].id;
     const existingAccounts = await db.select().from(accounts).where(eq(accounts.userId, userId));
@@ -29,7 +30,7 @@ export async function runSeed(referenceDate: Date = new Date()) {
     await db.delete(users).where(eq(users.id, userId));
   }
 
-  const [user] = await db.insert(users).values({ email: dataset.userEmail }).returning();
+  const [user] = await db.insert(users).values({ email: userEmail }).returning();
 
   const now = new Date();
   const consentIdByAccountKey = new Map<string, string>();

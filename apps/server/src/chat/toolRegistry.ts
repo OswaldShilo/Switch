@@ -13,7 +13,9 @@ import {
   requestFinancialDataInputSchema,
   summarizeFinancesInputSchema,
 } from '../mcp/schemas.js';
+import { listAccountsForUser } from '../adapter/accounts.js';
 import { fetchAccountsTool } from '../mcp/tools/accounts.js';
+import { withAudit } from '../mcp/audit.js';
 import { listSupportedBanksTool } from '../mcp/tools/banks.js';
 import { categorizeTransactionsTool } from '../mcp/tools/categorize.js';
 import { checkConsentStatusTool, getConsentDetailsTool, initiateConsentTool } from '../mcp/tools/consent.js';
@@ -94,6 +96,18 @@ export const CHAT_TOOLS: ChatToolDef[] = [
       const args = getDataStatusInputSchema.parse(rawArgs);
       return getDataStatusTool(userId, { sessionId: args.session_id });
     },
+  },
+  {
+    // The AA consent-flow tools below (fetch_accounts, fetch_transactions, etc.) all take an
+    // id the caller is expected to already hold from earlier in the conversation (e.g. having
+    // just called initiate_consent itself). For chat on already-seeded/connected data there's
+    // no such id in hand yet, so this zero-input tool is the one way to discover the user's
+    // own account ids before calling anything else.
+    name: 'list_accounts',
+    description: "List the user's own connected accounts (with their account IDs) across all active consents — call this first if you don't already have an account_id",
+    inputSchema: z.object({}),
+    handler: async (userId) =>
+      withAudit('list_accounts', userId, {}, async () => ({ ok: true as const, data: await listAccountsForUser(userId) })),
   },
   {
     name: 'fetch_accounts',

@@ -14,8 +14,16 @@ export function createChatRouter(sendMessage: typeof sendChatMessage = sendChatM
       res.status(400).json({ error: 'message is required' });
       return;
     }
-    const result = await sendMessage(req.userId!, message);
-    res.json(result);
+    try {
+      const result = await sendMessage(req.userId!, message);
+      res.json(result);
+    } catch (err) {
+      // Without this, an error anywhere in the LLM call or tool-handler chain
+      // becomes an unhandled promise rejection, which crashes the whole
+      // process (Node's default since v15) instead of just failing this request.
+      console.error('POST /api/chat failed:', err);
+      res.status(502).json({ error: 'Failed to reach the chat model' });
+    }
   });
 
   return router;
