@@ -6,4 +6,4 @@ An MCP server *and* a complete app that plugs India's RBI-regulated Account Aggr
 **Code:** https://github.com/OswaldShilo/switch
 
 
-Built and Building for PecHacks 4.0 — Team Switch.
+Team Switch.
