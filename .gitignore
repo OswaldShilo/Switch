@@ -4,3 +4,4 @@ dist/
 *.log
 drizzle/
 get-login-link.mjs
+.worktrees/
