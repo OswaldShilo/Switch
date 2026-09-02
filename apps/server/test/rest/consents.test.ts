@@ -97,4 +97,32 @@ describe('consents REST endpoints', () => {
     const [row] = await db.select().from(consents).where(eq(consents.id, initiated.data.consentId));
     expect(row.status).toBe('PENDING');
   });
+
+  it('IDOR regression: POST /activate and /fetch-data 404 when the consent belongs to a different user', async () => {
+    const otherUserId = await getOrCreateUserByEmail(OTHER_USER_EMAIL);
+    const initiated = await initiateConsentTool(otherUserId, {
+      mobile: '9876500002',
+      fipId: 'hdfc-bank',
+      purpose: 'Personal finance management',
+      fromDate: '2025-01-01',
+      toDate: '2026-07-20',
+      expiryDays: 365,
+      fiTypes: ['DEPOSIT'],
+    });
+    if (!initiated.ok) throw new Error('setup failed');
+
+    const activateRes = await request(buildApp())
+      .post(`/api/consents/${initiated.data.consentId}/activate`)
+      .set('Authorization', `Bearer ${tokenFor(DEMO_USER_EMAIL)}`);
+    expect(activateRes.status).toBe(404);
+
+    const [row] = await db.select().from(consents).where(eq(consents.id, initiated.data.consentId));
+    expect(row.status).toBe('PENDING');
+
+    const fetchDataRes = await request(buildApp())
+      .post(`/api/consents/${initiated.data.consentId}/fetch-data`)
+      .set('Authorization', `Bearer ${tokenFor(DEMO_USER_EMAIL)}`);
+    expect(fetchDataRes.status).toBe(400);
+    expect(fetchDataRes.body.code).toBe('CONSENT_NOT_FOUND');
+  });
 });

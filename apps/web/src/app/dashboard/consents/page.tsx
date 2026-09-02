@@ -1,5 +1,7 @@
+import Link from 'next/link';
 import type { ConsentDto } from '@switch/shared';
 import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { apiGet } from '@/lib/apiClient';
@@ -26,9 +28,14 @@ export default async function ConsentsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Consent manager</h1>
-        <p className="text-sm text-muted-foreground">Manage which bank connections can share data with Switch.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Consent manager</h1>
+          <p className="text-sm text-muted-foreground">Manage which bank connections can share data with Switch.</p>
+        </div>
+        <Link href="/dashboard/connect?new=1" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+          Connect a bank
+        </Link>
       </div>
 
       <Card>

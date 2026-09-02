@@ -4,7 +4,9 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 import { db } from '../db/client.js';
 import { chatMessages } from '../db/schema.js';
 import { CHAT_TOOLS } from './toolRegistry.js';
-import { SYSTEM_PROMPT } from './systemPrompt.js';
+import { SYSTEM_PROMPT, SYSTEM_PROMPT_NO_MEMORY } from './systemPrompt.js';
+
+const MEMORY_TOOL_NAMES = new Set(['remember', 'recall']);
 
 export type AskClaudeFn = (params: {
   system: string;
@@ -112,10 +114,13 @@ const MAX_ROUNDS = 5;
 export async function sendChatMessage(
   userId: string,
   message: string,
-  opts: { askClaude?: AskClaudeFn } = {}
+  opts: { askClaude?: AskClaudeFn; memoryEnabled?: boolean } = {}
 ): Promise<{ reply: string; toolCalls: string[] }> {
   const askClaude = opts.askClaude ?? askClaudeWithOpenRouter;
-  const tools: Anthropic.Tool[] = CHAT_TOOLS.map((t) => ({
+  const memoryEnabled = opts.memoryEnabled ?? true;
+  const systemPrompt = memoryEnabled ? SYSTEM_PROMPT : SYSTEM_PROMPT_NO_MEMORY;
+  const chatTools = memoryEnabled ? CHAT_TOOLS : CHAT_TOOLS.filter((t) => !MEMORY_TOOL_NAMES.has(t.name));
+  const tools: Anthropic.Tool[] = chatTools.map((t) => ({
     name: t.name,
     description: t.description,
     // zod-to-json-schema's output is a plain JSON Schema object; Anthropic's Tool.InputSchema
@@ -129,7 +134,7 @@ export async function sendChatMessage(
   const toolCalls: string[] = [];
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
-    const response = await askClaude({ system: SYSTEM_PROMPT, messages: history, tools });
+    const response = await askClaude({ system: systemPrompt, messages: history, tools });
     const textParts = response.content.filter((b): b is Anthropic.TextBlock => b.type === 'text');
     const toolUses = response.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
 
@@ -147,7 +152,7 @@ export async function sendChatMessage(
     history.push({ role: 'assistant', content: response.content });
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
     for (const use of toolUses) {
-      const tool = CHAT_TOOLS.find((t) => t.name === use.name);
+      const tool = chatTools.find((t) => t.name === use.name);
       const result = tool
         ? await tool.handler(userId, use.input)
         : { ok: false as const, error: { code: 'UNKNOWN_TOOL', message: use.name } };

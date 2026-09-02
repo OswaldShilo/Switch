@@ -110,19 +110,19 @@ describe('finvuAdapter (createFinvuAdapter with a stub fetch — never hits the 
       expect(initiated.data.approvalUrl).toBe('https://finvu.example/approve/handle-abc-123');
       const consentId = initiated.data.consentId;
 
-      const pendingCheck = await adapter.checkConsentStatus(consentId);
+      const pendingCheck = await adapter.checkConsentStatus(consentId, userId);
       expect(pendingCheck).toEqual({ ok: true, data: { status: 'PENDING' } });
 
-      const activeCheck = await adapter.checkConsentStatus(consentId);
+      const activeCheck = await adapter.checkConsentStatus(consentId, userId);
       expect(activeCheck).toEqual({ ok: true, data: { status: 'ACTIVE' } });
 
-      const requested = await adapter.requestFinancialData(consentId);
+      const requested = await adapter.requestFinancialData(consentId, userId);
       expect(requested).toEqual({ ok: true, data: { sessionId: consentId, status: 'PROCESSING' } });
 
-      const pendingStatus = await adapter.getDataStatus(consentId);
+      const pendingStatus = await adapter.getDataStatus(consentId, userId);
       expect(pendingStatus).toEqual({ ok: true, data: { status: 'PENDING', fetchedAt: null } });
 
-      const readyStatus = await adapter.getDataStatus(consentId);
+      const readyStatus = await adapter.getDataStatus(consentId, userId);
       expect(readyStatus.ok).toBe(true);
       if (!readyStatus.ok) return;
       expect(readyStatus.data.status).toBe('READY');
@@ -148,7 +148,7 @@ describe('finvuAdapter (createFinvuAdapter with a stub fetch — never hits the 
       }
 
       // Idempotency: a second getDataStatus call after ingestion must not re-insert.
-      const secondReady = await adapter.getDataStatus(consentId);
+      const secondReady = await adapter.getDataStatus(consentId, userId);
       expect(secondReady).toEqual({ ok: true, data: { status: 'READY', fetchedAt: readyStatus.data.fetchedAt } });
       const txnRowsAfter = await db.select().from(transactions).where(eq(transactions.accountId, account.id));
       expect(txnRowsAfter).toHaveLength(373);
@@ -162,7 +162,7 @@ describe('finvuAdapter (createFinvuAdapter with a stub fetch — never hits the 
     const initiated = await adapter.initiateConsent({ ...baseInput, userId, fipId: 'icici-bank' });
     if (!initiated.ok) throw new Error('setup failed');
 
-    const result = await adapter.requestFinancialData(initiated.data.consentId);
+    const result = await adapter.requestFinancialData(initiated.data.consentId, userId);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe('CONSENT_NOT_ACTIVE');
@@ -175,7 +175,7 @@ describe('finvuAdapter (createFinvuAdapter with a stub fetch — never hits the 
     const initiated = await adapter.initiateConsent({ ...baseInput, userId, fipId: 'hdfc-bank' });
     if (!initiated.ok) throw new Error('setup failed');
 
-    const details = await adapter.getConsentDetails(initiated.data.consentId);
+    const details = await adapter.getConsentDetails(initiated.data.consentId, userId);
     expect(details).toEqual({
       ok: true,
       data: {
@@ -193,15 +193,15 @@ describe('finvuAdapter (createFinvuAdapter with a stub fetch — never hits the 
     const adapter = createFinvuAdapter(stub as unknown as typeof fetch);
     const unknownId = '00000000-0000-0000-0000-000000000000';
 
-    expect((await adapter.checkConsentStatus(unknownId)).ok).toBe(false);
-    expect((await adapter.getConsentDetails(unknownId)).ok).toBe(false);
-    expect((await adapter.requestFinancialData(unknownId)).ok).toBe(false);
+    expect((await adapter.checkConsentStatus(unknownId, userId)).ok).toBe(false);
+    expect((await adapter.getConsentDetails(unknownId, userId)).ok).toBe(false);
+    expect((await adapter.requestFinancialData(unknownId, userId)).ok).toBe(false);
   });
 
   it('returns SESSION_NOT_FOUND from getDataStatus for an unknown session id', async () => {
     const { stub } = buildStubFetch(xmlFixture);
     const adapter = createFinvuAdapter(stub as unknown as typeof fetch);
-    const result = await adapter.getDataStatus('00000000-0000-0000-0000-000000000000');
+    const result = await adapter.getDataStatus('00000000-0000-0000-0000-000000000000', userId);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe('SESSION_NOT_FOUND');

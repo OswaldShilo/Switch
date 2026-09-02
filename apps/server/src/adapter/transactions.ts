@@ -30,14 +30,20 @@ export interface FetchTransactionsOutput {
 
 const DEFAULT_LIMIT = 50;
 
-export async function fetchTransactions(input: FetchTransactionsInput): Promise<ToolResult<FetchTransactionsOutput>> {
+export async function fetchTransactions(
+  input: FetchTransactionsInput,
+  userId: string
+): Promise<ToolResult<FetchTransactionsOutput>> {
   const [account] = await db.select().from(accounts).where(eq(accounts.id, input.accountId));
   if (!account) {
     return { ok: false, error: { code: 'ACCOUNT_NOT_FOUND', message: `No account with id "${input.accountId}"` } };
   }
 
   const [consent] = await db.select().from(consents).where(eq(consents.id, account.consentId));
-  if (!consent || consent.status !== 'ACTIVE') {
+  if (!consent || consent.userId !== userId) {
+    return { ok: false, error: { code: 'ACCOUNT_NOT_FOUND', message: `No account with id "${input.accountId}"` } };
+  }
+  if (consent.status !== 'ACTIVE') {
     return {
       ok: false,
       error: { code: 'CONSENT_NOT_ACTIVE', message: `Consent for account "${input.accountId}" is not ACTIVE` },

@@ -14,6 +14,7 @@ export function ChatPanel({ accessToken }: { accessToken: string }) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [memoryEnabled, setMemoryEnabled] = useState(true);
 
   async function handleSend() {
     const trimmed = input.trim();
@@ -31,7 +32,7 @@ export function ChatPanel({ accessToken }: { accessToken: string }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify({ message: trimmed, memory_enabled: memoryEnabled }),
       });
       if (!res.ok) throw new Error(`Chat request failed: ${res.status}`);
       const data = (await res.json()) as { reply: string; toolCalls: string[] };
@@ -45,6 +46,16 @@ export function ChatPanel({ accessToken }: { accessToken: string }) {
 
   return (
     <div className="space-y-4">
+      <label className="flex w-fit items-center gap-2 text-sm text-muted-foreground select-none">
+        <input
+          type="checkbox"
+          checked={memoryEnabled}
+          onChange={(e) => setMemoryEnabled(e.target.checked)}
+          className="size-4"
+        />
+        Memory {memoryEnabled ? 'on' : 'off'}
+      </label>
+
       <div className="flex max-h-96 min-h-24 flex-col gap-3 overflow-y-auto">
         {messages.length === 0 ? (
           <p className="text-sm text-muted-foreground">

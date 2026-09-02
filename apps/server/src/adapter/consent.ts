@@ -68,9 +68,12 @@ export async function initiateConsent(input: InitiateConsentInput): Promise<Tool
   };
 }
 
-export async function checkConsentStatus(consentId: string): Promise<ToolResult<{ status: string }>> {
+export async function checkConsentStatus(
+  consentId: string,
+  userId: string
+): Promise<ToolResult<{ status: string }>> {
   const [consent] = await db.select().from(consents).where(eq(consents.id, consentId));
-  if (!consent) {
+  if (!consent || consent.userId !== userId) {
     return { ok: false, error: { code: 'CONSENT_NOT_FOUND', message: `No consent with id "${consentId}"` } };
   }
 
@@ -103,9 +106,12 @@ export async function revokeConsent(consentId: string, userId: string): Promise<
   return { ok: true, data: { status: updated.status } };
 }
 
-export async function getConsentDetails(consentId: string): Promise<ToolResult<ConsentDetails>> {
+export async function getConsentDetails(
+  consentId: string,
+  userId: string
+): Promise<ToolResult<ConsentDetails>> {
   const [consent] = await db.select().from(consents).where(eq(consents.id, consentId));
-  if (!consent) {
+  if (!consent || consent.userId !== userId) {
     return { ok: false, error: { code: 'CONSENT_NOT_FOUND', message: `No consent with id "${consentId}"` } };
   }
   return {

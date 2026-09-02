@@ -1,4 +1,6 @@
+import Link from 'next/link';
 import type { SummaryResponse } from '@switch/shared';
+import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { apiGet } from '@/lib/apiClient';
 import { getAccessToken, getFirstAccount } from '@/lib/dashboardData';
@@ -23,9 +25,14 @@ export default async function OverviewPage() {
 
   if (!account) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No connected accounts yet. Complete a consent flow via the MCP tools to see data here.
-      </p>
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          No connected accounts yet. Connect a bank to see your spending here.
+        </p>
+        <Link href="/dashboard/connect" className={buttonVariants()}>
+          Connect a bank
+        </Link>
+      </div>
     );
   }
 

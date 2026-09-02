@@ -33,3 +33,10 @@ export type TransactionDto = z.infer<typeof transactionDtoSchema>;
 
 export const summaryResponseSchema = z.record(z.string(), z.unknown());
 export type SummaryResponse = z.infer<typeof summaryResponseSchema>;
+
+export const bankDtoSchema = z.object({
+  fipId: z.string(),
+  name: z.string(),
+  logo: z.string(),
+});
+export type BankDto = z.infer<typeof bankDtoSchema>;

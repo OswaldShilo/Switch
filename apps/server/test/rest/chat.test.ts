@@ -64,4 +64,44 @@ describe('POST /api/chat', () => {
       .send({});
     expect(res.status).toBe(400);
   });
+
+  it('defaults memory_enabled to true when omitted', async () => {
+    let received: unknown;
+    const stub = async (_userId: string, _message: string, opts?: { memoryEnabled?: boolean }) => {
+      received = opts?.memoryEnabled;
+      return { reply: 'ok', toolCalls: [] };
+    };
+
+    await request(buildApp(stub))
+      .post('/api/chat')
+      .set('Authorization', `Bearer ${tokenFor(DEMO_USER_EMAIL)}`)
+      .send({ message: 'hi' });
+
+    expect(received).toBe(true);
+  });
+
+  it('passes memory_enabled: false through to sendMessage', async () => {
+    let received: unknown;
+    const stub = async (_userId: string, _message: string, opts?: { memoryEnabled?: boolean }) => {
+      received = opts?.memoryEnabled;
+      return { reply: 'ok', toolCalls: [] };
+    };
+
+    const res = await request(buildApp(stub))
+      .post('/api/chat')
+      .set('Authorization', `Bearer ${tokenFor(DEMO_USER_EMAIL)}`)
+      .send({ message: 'hi', memory_enabled: false });
+
+    expect(res.status).toBe(200);
+    expect(received).toBe(false);
+  });
+
+  it('400s when memory_enabled is not a boolean', async () => {
+    const stub = async () => ({ reply: 'unreachable', toolCalls: [] });
+    const res = await request(buildApp(stub))
+      .post('/api/chat')
+      .set('Authorization', `Bearer ${tokenFor(DEMO_USER_EMAIL)}`)
+      .send({ message: 'hi', memory_enabled: 'false' });
+    expect(res.status).toBe(400);
+  });
 });

@@ -16,9 +16,12 @@ export interface AccountForUser extends AccountSummary {
   consentId: string;
 }
 
-export async function fetchAccounts(consentId: string): Promise<ToolResult<AccountSummary[]>> {
+export async function fetchAccounts(
+  consentId: string,
+  userId: string
+): Promise<ToolResult<AccountSummary[]>> {
   const [consent] = await db.select().from(consents).where(eq(consents.id, consentId));
-  if (!consent) {
+  if (!consent || consent.userId !== userId) {
     return { ok: false, error: { code: 'CONSENT_NOT_FOUND', message: `No consent with id "${consentId}"` } };
   }
   if (consent.status !== 'ACTIVE') {

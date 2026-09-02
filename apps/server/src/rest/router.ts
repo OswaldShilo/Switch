@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { accountsRouter } from './accounts.js';
+import { banksRouter } from './banks.js';
 import { chatRouter } from './chat.js';
 import { connectorTokensRouter } from './connectorTokens.js';
 import { consentsRouter } from './consents.js';
@@ -9,6 +10,7 @@ import { transactionsRouter } from './transactions.js';
 
 export const apiRouter = Router();
 apiRouter.use(accountsRouter);
+apiRouter.use(banksRouter);
 apiRouter.use(chatRouter);
 apiRouter.use(connectorTokensRouter);
 apiRouter.use(consentsRouter);

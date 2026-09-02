@@ -13,33 +13,19 @@ export default function LoginPage() {
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
-
-    async function handleAuthRedirect() {
-      const hash = new URLSearchParams(window.location.hash.slice(1));
-      const access_token = hash.get('access_token');
-      const refresh_token = hash.get('refresh_token');
-
-      if (access_token && refresh_token) {
-        const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
-        window.history.replaceState(null, '', window.location.pathname);
-        if (sessionError) {
-          setStatus('error');
-          setError(sessionError.message);
-          return;
-        }
-        router.replace('/dashboard');
-        return;
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
+    // detectSessionInUrl (default true, unset in getSupabaseBrowserClient) already
+    // exchanges ?code=... for a session during client construction above; awaiting
+    // getSession() here just waits for that in-flight exchange to finish.
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        router.replace('/dashboard');
+        if (window.location.search) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+        router.replace('/dashboard/connect');
         return;
       }
       setStatus('idle');
-    }
-
-    handleAuthRedirect();
+    });
   }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -47,7 +33,16 @@ export default function LoginPage() {
     setStatus('sending');
     setError(null);
     const supabase = getSupabaseBrowserClient();
-    const { error: authError } = await supabase.auth.signInWithOtp({ email });
+    // Without this, Supabase falls back to its dashboard-configured Site URL for the
+    // post-verify redirect (often just "/"), which middleware.ts then intercepts server-side
+    // (no session cookie yet), redirecting to /login via `new URL('/login', request.url)` —
+    // that constructor drops the original ?code=... query string, so the PKCE code never
+    // reaches client JS to be exchanged. Sending users straight to /login (a public path)
+    // means middleware never touches the redirect and the code survives.
+    const { error: authError } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/login` },
+    });
     if (authError) {
       setStatus('error');
       setError(authError.message);
@@ -62,6 +57,9 @@ export default function LoginPage() {
         <p className="text-sm text-muted-foreground">Checking session…</p>
       </div>
     );
+
+
+
   }
 
   return (

@@ -14,8 +14,14 @@ export interface AaAdapter {
     expiryDays: number;
     fiTypes: string[];
   }): Promise<ToolResult<ConsentSummary>>;
-  checkConsentStatus(consentId: string): Promise<ToolResult<{ status: string }>>;
-  getConsentDetails(consentId: string): Promise<ToolResult<ConsentDetails>>;
-  requestFinancialData(consentId: string): Promise<ToolResult<{ sessionId: string; status: string }>>;
-  getDataStatus(sessionId: string): Promise<ToolResult<{ status: string; fetchedAt: string | null }>>;
+  checkConsentStatus(consentId: string, userId: string): Promise<ToolResult<{ status: string }>>;
+  getConsentDetails(consentId: string, userId: string): Promise<ToolResult<ConsentDetails>>;
+  requestFinancialData(
+    consentId: string,
+    userId: string
+  ): Promise<ToolResult<{ sessionId: string; status: string }>>;
+  getDataStatus(
+    sessionId: string,
+    userId: string
+  ): Promise<ToolResult<{ status: string; fetchedAt: string | null }>>;
 }

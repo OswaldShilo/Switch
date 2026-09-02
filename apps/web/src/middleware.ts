@@ -37,7 +37,9 @@ export async function middleware(request: NextRequest) {
     console.error('[middleware] getUser failed', err);
   }
 
-  const isPublicPath = PUBLIC_PATHS.some((path) => request.nextUrl.pathname.startsWith(path));
+  const isPublicPath =
+    request.nextUrl.pathname === '/' ||
+    PUBLIC_PATHS.some((path) => request.nextUrl.pathname.startsWith(path));
 
   if (!user && !isPublicPath) {
     const loginUrl = new URL('/login', request.url);

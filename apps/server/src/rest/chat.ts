@@ -9,13 +9,17 @@ export function createChatRouter(sendMessage: typeof sendChatMessage = sendChatM
   const router = Router();
 
   router.post('/chat', requireUser, async (req, res) => {
-    const { message } = req.body as { message?: unknown };
+    const { message, memory_enabled } = req.body as { message?: unknown; memory_enabled?: unknown };
     if (typeof message !== 'string' || message.trim().length === 0) {
       res.status(400).json({ error: 'message is required' });
       return;
     }
+    if (memory_enabled !== undefined && typeof memory_enabled !== 'boolean') {
+      res.status(400).json({ error: 'memory_enabled must be a boolean' });
+      return;
+    }
     try {
-      const result = await sendMessage(req.userId!, message);
+      const result = await sendMessage(req.userId!, message, { memoryEnabled: memory_enabled ?? true });
       res.json(result);
     } catch (err) {
       // Without this, an error anywhere in the LLM call or tool-handler chain

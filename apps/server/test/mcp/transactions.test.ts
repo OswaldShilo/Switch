@@ -1,10 +1,13 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { db, pool } from '../../src/db/client.js';
-import { accounts, consents } from '../../src/db/schema.js';
+import { accounts, auditLog, consents, users } from '../../src/db/schema.js';
 import { runSeed } from '../../src/db/seed/seed.js';
 import { getDemoUserId } from '../../src/adapter/demoUser.js';
+import { getOrCreateUserByEmail } from '../../src/adapter/users.js';
 import { fetchTransactionsTool } from '../../src/mcp/tools/transactions.js';
+
+const OTHER_USER_EMAIL = 'mcp-transactions-other-user@switch.app';
 
 describe('fetchTransactionsTool', () => {
   let userId: string;
@@ -18,6 +21,9 @@ describe('fetchTransactionsTool', () => {
   });
 
   afterAll(async () => {
+    const otherUserId = await getOrCreateUserByEmail(OTHER_USER_EMAIL);
+    await db.delete(auditLog).where(eq(auditLog.userId, otherUserId));
+    await db.delete(users).where(eq(users.id, otherUserId));
     await pool.end();
   });
 
@@ -49,6 +55,14 @@ describe('fetchTransactionsTool', () => {
     for (const txn of result.data.transactions) {
       expect(txn.date >= '2026-07-01' && txn.date <= '2026-07-31').toBe(true);
     }
+  });
+
+  it('IDOR regression: returns ACCOUNT_NOT_FOUND when a different user supplies the demo user\'s account id', async () => {
+    const otherUserId = await getOrCreateUserByEmail(OTHER_USER_EMAIL);
+    const result = await fetchTransactionsTool(otherUserId, { accountId });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('ACCOUNT_NOT_FOUND');
   });
 
   it('blocks fetch_transactions once the owning consent is REVOKED', async () => {

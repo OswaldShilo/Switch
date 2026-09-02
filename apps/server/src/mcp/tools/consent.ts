@@ -17,7 +17,7 @@ export async function checkConsentStatusTool(
   input: { consentId: string }
 ): Promise<ToolResult<{ status: string }>> {
   return withAudit('check_consent_status', userId, input, () =>
-    getAdapter().checkConsentStatus(input.consentId)
+    getAdapter().checkConsentStatus(input.consentId, userId)
   );
 }
 
@@ -26,6 +26,6 @@ export async function getConsentDetailsTool(
   input: { consentId: string }
 ): Promise<ToolResult<ConsentDetails>> {
   return withAudit('get_consent_details', userId, input, () =>
-    getAdapter().getConsentDetails(input.consentId)
+    getAdapter().getConsentDetails(input.consentId, userId)
   );
 }

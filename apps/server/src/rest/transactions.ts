@@ -17,13 +17,16 @@ transactionsRouter.get('/accounts/:id/transactions', requireUser, async (req, re
   const limit = req.query.limit ? Number.parseInt(req.query.limit as string, 10) : undefined;
   const cursor = req.query.cursor as string | undefined;
 
-  const result = await fetchTransactions({
-    accountId: req.params.id,
-    from,
-    to,
-    category,
-    limit,
-    cursor,
-  });
+  const result = await fetchTransactions(
+    {
+      accountId: req.params.id,
+      from,
+      to,
+      category,
+      limit,
+      cursor,
+    },
+    req.userId!
+  );
   res.json(result.ok ? result.data : result.error);
 });

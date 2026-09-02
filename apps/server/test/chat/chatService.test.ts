@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { getDemoUserId } from '../../src/adapter/demoUser.js';
 import { sendChatMessage, type AskClaudeFn } from '../../src/chat/chatService.js';
-import { SYSTEM_PROMPT } from '../../src/chat/systemPrompt.js';
+import { SYSTEM_PROMPT, SYSTEM_PROMPT_NO_MEMORY } from '../../src/chat/systemPrompt.js';
 import { db, pool } from '../../src/db/client.js';
 import { auditLog, chatMessages } from '../../src/db/schema.js';
 import { runSeed } from '../../src/db/seed/seed.js';
@@ -118,5 +118,35 @@ describe('sendChatMessage', () => {
     expect(capturedSystem).toContain('securities');
     // (d) check recall before giving financial advice
     expect(capturedSystem).toContain('recall');
+  });
+
+  it('memoryEnabled: false sends SYSTEM_PROMPT_NO_MEMORY and strips remember/recall from the tool list', async () => {
+    let capturedSystem = '';
+    let capturedToolNames: string[] = [];
+    const askClaude: AskClaudeFn = async (params) => {
+      capturedSystem = params.system;
+      capturedToolNames = params.tools.map((t) => t.name);
+      return textMessage('ok');
+    };
+
+    await sendChatMessage(userId, 'test', { askClaude, memoryEnabled: false });
+
+    expect(capturedSystem).toBe(SYSTEM_PROMPT_NO_MEMORY);
+    expect(capturedToolNames).not.toContain('remember');
+    expect(capturedToolNames).not.toContain('recall');
+  });
+
+  it('memoryEnabled: false errors out a remember/recall tool_use instead of running it', async () => {
+    let call = 0;
+    const askClaude: AskClaudeFn = async () => {
+      call += 1;
+      if (call === 1) return toolUseMessage('recall', 'toolu_1', {});
+      return textMessage('done');
+    };
+
+    const result = await sendChatMessage(userId, 'test', { askClaude, memoryEnabled: false });
+
+    expect(result.toolCalls).toEqual(['recall']);
+    expect(result.reply).toBe('done');
   });
 });

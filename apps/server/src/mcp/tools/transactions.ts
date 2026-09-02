@@ -10,5 +10,5 @@ export async function fetchTransactionsTool(
   userId: string,
   input: FetchTransactionsInput
 ): Promise<ToolResult<FetchTransactionsOutput>> {
-  return withAudit('fetch_transactions', userId, input, () => fetchTransactions(input));
+  return withAudit('fetch_transactions', userId, input, () => fetchTransactions(input, userId));
 }

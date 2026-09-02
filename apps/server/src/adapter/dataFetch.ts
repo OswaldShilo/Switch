@@ -5,10 +5,11 @@ import { generateMockAccountData } from '../db/seed/mockData.js';
 import type { ToolResult } from './types.js';
 
 export async function requestFinancialData(
-  consentId: string
+  consentId: string,
+  userId: string
 ): Promise<ToolResult<{ sessionId: string; status: string }>> {
   const [consent] = await db.select().from(consents).where(eq(consents.id, consentId));
-  if (!consent) {
+  if (!consent || consent.userId !== userId) {
     return { ok: false, error: { code: 'CONSENT_NOT_FOUND', message: `No consent with id "${consentId}"` } };
   }
   if (consent.status !== 'ACTIVE') {
@@ -61,10 +62,11 @@ export async function requestFinancialData(
 }
 
 export async function getDataStatus(
-  sessionId: string
+  sessionId: string,
+  userId: string
 ): Promise<ToolResult<{ status: string; fetchedAt: string | null }>> {
   const [consent] = await db.select().from(consents).where(eq(consents.id, sessionId));
-  if (!consent) {
+  if (!consent || consent.userId !== userId) {
     return { ok: false, error: { code: 'SESSION_NOT_FOUND', message: `No session with id "${sessionId}"` } };
   }
 

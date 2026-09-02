@@ -7,7 +7,7 @@ export async function requestFinancialDataTool(
   input: { consentId: string }
 ): Promise<ToolResult<{ sessionId: string; status: string }>> {
   return withAudit('request_financial_data', userId, input, () =>
-    getAdapter().requestFinancialData(input.consentId)
+    getAdapter().requestFinancialData(input.consentId, userId)
   );
 }
 
@@ -15,5 +15,7 @@ export async function getDataStatusTool(
   userId: string,
   input: { sessionId: string }
 ): Promise<ToolResult<{ status: string; fetchedAt: string | null }>> {
-  return withAudit('get_data_status', userId, input, () => getAdapter().getDataStatus(input.sessionId));
+  return withAudit('get_data_status', userId, input, () =>
+    getAdapter().getDataStatus(input.sessionId, userId)
+  );
 }

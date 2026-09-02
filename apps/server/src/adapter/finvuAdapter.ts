@@ -126,9 +126,11 @@ export function createFinvuAdapter(fetchImpl: typeof fetch = fetch): AaAdapter {
     };
   };
 
-  const checkConsentStatus: AaAdapter['checkConsentStatus'] = async (ourConsentId) => {
+  const checkConsentStatus: AaAdapter['checkConsentStatus'] = async (ourConsentId, userId) => {
     const [consent] = await db.select().from(consents).where(eq(consents.id, ourConsentId));
-    if (!consent) return { ok: false, error: { code: 'CONSENT_NOT_FOUND', message: ourConsentId } };
+    if (!consent || consent.userId !== userId) {
+      return { ok: false, error: { code: 'CONSENT_NOT_FOUND', message: ourConsentId } };
+    }
     const raw = consent.rawJson as FinvuConsentRawJson;
 
     const res = await finvuFetch(`/ConsentStatus/${raw.consentHandle}/${raw.custId}`);
@@ -150,9 +152,11 @@ export function createFinvuAdapter(fetchImpl: typeof fetch = fetch): AaAdapter {
     return { ok: true, data: { status } };
   };
 
-  const getConsentDetails: AaAdapter['getConsentDetails'] = async (ourConsentId) => {
+  const getConsentDetails: AaAdapter['getConsentDetails'] = async (ourConsentId, userId) => {
     const [consent] = await db.select().from(consents).where(eq(consents.id, ourConsentId));
-    if (!consent) return { ok: false, error: { code: 'CONSENT_NOT_FOUND', message: ourConsentId } };
+    if (!consent || consent.userId !== userId) {
+      return { ok: false, error: { code: 'CONSENT_NOT_FOUND', message: ourConsentId } };
+    }
     return {
       ok: true,
       data: {
@@ -165,9 +169,11 @@ export function createFinvuAdapter(fetchImpl: typeof fetch = fetch): AaAdapter {
     };
   };
 
-  const requestFinancialData: AaAdapter['requestFinancialData'] = async (ourConsentId) => {
+  const requestFinancialData: AaAdapter['requestFinancialData'] = async (ourConsentId, userId) => {
     const [consent] = await db.select().from(consents).where(eq(consents.id, ourConsentId));
-    if (!consent) return { ok: false, error: { code: 'CONSENT_NOT_FOUND', message: ourConsentId } };
+    if (!consent || consent.userId !== userId) {
+      return { ok: false, error: { code: 'CONSENT_NOT_FOUND', message: ourConsentId } };
+    }
     if (consent.status !== 'ACTIVE') {
       return { ok: false, error: { code: 'CONSENT_NOT_ACTIVE', message: `Consent is ${consent.status}` } };
     }
@@ -198,9 +204,11 @@ export function createFinvuAdapter(fetchImpl: typeof fetch = fetch): AaAdapter {
   // does it synchronously inside requestFinancialData; real Finvu is async (FIRequest -> poll
   // FIStatus -> FIDataFetch once ready), so the real adapter does the fetch-parse-insert work
   // lazily here, the first time it observes fiRequestStatus: READY.
-  const getDataStatus: AaAdapter['getDataStatus'] = async (sessionId) => {
+  const getDataStatus: AaAdapter['getDataStatus'] = async (sessionId, userId) => {
     const [consent] = await db.select().from(consents).where(eq(consents.id, sessionId));
-    if (!consent) return { ok: false, error: { code: 'SESSION_NOT_FOUND', message: sessionId } };
+    if (!consent || consent.userId !== userId) {
+      return { ok: false, error: { code: 'SESSION_NOT_FOUND', message: sessionId } };
+    }
     const raw = consent.rawJson as FinvuConsentRawJson;
 
     const [existingAccount] = await db.select().from(accounts).where(eq(accounts.consentId, consent.id));

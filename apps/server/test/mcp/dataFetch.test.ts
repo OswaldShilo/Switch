@@ -1,11 +1,14 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { db, pool } from '../../src/db/client.js';
-import { accounts } from '../../src/db/schema.js';
+import { accounts, auditLog, users } from '../../src/db/schema.js';
 import { runSeed } from '../../src/db/seed/seed.js';
 import { getDemoUserId } from '../../src/adapter/demoUser.js';
+import { getOrCreateUserByEmail } from '../../src/adapter/users.js';
 import { checkConsentStatusTool, initiateConsentTool } from '../../src/mcp/tools/consent.js';
 import { getDataStatusTool, requestFinancialDataTool } from '../../src/mcp/tools/dataFetch.js';
+
+const OTHER_USER_EMAIL = 'mcp-datafetch-other-user@switch.app';
 
 describe('data fetch tools', () => {
   let userId: string;
@@ -16,6 +19,9 @@ describe('data fetch tools', () => {
   });
 
   afterAll(async () => {
+    const otherUserId = await getOrCreateUserByEmail(OTHER_USER_EMAIL);
+    await db.delete(auditLog).where(eq(auditLog.userId, otherUserId));
+    await db.delete(users).where(eq(users.id, otherUserId));
     await pool.end();
   });
 
@@ -82,5 +88,20 @@ describe('data fetch tools', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe('SESSION_NOT_FOUND');
+  });
+
+  it('IDOR regression: a different user cannot request or poll financial data for someone else\'s consent', async () => {
+    const consentId = await activeConsentId();
+    const otherUserId = await getOrCreateUserByEmail(OTHER_USER_EMAIL);
+
+    const requestResult = await requestFinancialDataTool(otherUserId, { consentId });
+    expect(requestResult.ok).toBe(false);
+    if (requestResult.ok) return;
+    expect(requestResult.error.code).toBe('CONSENT_NOT_FOUND');
+
+    const statusResult = await getDataStatusTool(otherUserId, { sessionId: consentId });
+    expect(statusResult.ok).toBe(false);
+    if (statusResult.ok) return;
+    expect(statusResult.error.code).toBe('SESSION_NOT_FOUND');
   });
 });
