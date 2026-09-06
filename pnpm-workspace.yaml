@@ -1,3 +1,5 @@
 packages:
-  - "apps/*"
-  - "packages/*"
+  - "backend/core"
+  - "frontend"
+  - "frontend/shared"
+  - "tests"

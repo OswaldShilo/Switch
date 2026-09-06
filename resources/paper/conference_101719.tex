@@ -1,0 +1,985 @@
+    \documentclass[conference]{IEEEtran}
+    
+    % ---------------------------------------------------------
+    % PACKAGES
+    % ---------------------------------------------------------
+    
+    \usepackage{cite}
+    \usepackage{amsmath,amssymb,amsfonts}
+    \usepackage{graphicx}
+    \usepackage{booktabs}
+    \usepackage{multirow}
+    \usepackage{array}
+    \usepackage{url}
+    \usepackage{xcolor}
+    \usepackage{microtype}
+    
+    % ---------------------------------------------------------
+    % DOCUMENT INFORMATION
+    % ---------------------------------------------------------
+    
+    \title{
+    Switch FI: Evaluating Memory-Augmented Grounded Reasoning
+    for Personalized Financial LLM Assistance
+    }
+    
+    \author{
+    \IEEEauthorblockN{
+    Author Name\IEEEauthorrefmark{1},
+    Author Name\IEEEauthorrefmark{2},
+    Author Name\IEEEauthorrefmark{3}
+    }
+    \IEEEauthorblockA{
+    \IEEEauthorrefmark{1}Department / Institution\\
+    City, Country\\
+    email@example.com
+    }
+    \and
+    \IEEEauthorblockN{
+    Author Name\IEEEauthorrefmark{4}
+    }
+    \IEEEauthorblockA{
+    \IEEEauthorrefmark{4}Department / Institution\\
+    City, Country\\
+    email@example.com
+    }
+    }
+    
+    % ---------------------------------------------------------
+    % BEGIN DOCUMENT
+    % ---------------------------------------------------------
+    
+    \begin{document}
+    
+    \maketitle
+    
+    % ---------------------------------------------------------
+    % ABSTRACT
+    % ---------------------------------------------------------
+    
+    \begin{abstract}
+    
+    Large language models (LLMs) can provide useful financial guidance but
+    remain unreliable when answering questions requiring access to a user's
+    actual financial records or persistent knowledge of user-specific
+    preferences. In particular, ungrounded LLM responses can hallucinate
+    numerical values, while stateless assistants repeatedly lose information
+    about user preferences and financial goals.
+    
+    We present \textit{Switch FI}, a Model Context Protocol (MCP)-based
+    financial assistance system that combines deterministic financial
+    aggregation with explicit and implicit user memory. The system connects
+    LLM assistants to consented financial data through India's
+    Account Aggregator (AA) ecosystem and exposes structured financial
+    operations as callable tools. Rather than allowing the language model to
+    directly infer numerical financial state, Switch FI performs deterministic
+    aggregation over transaction data and supplies the resulting values to
+    the
+    model as grounded context.
+    
+    We further introduce an evaluation framework for measuring the effect of
+    persistent memory on personalized financial reasoning. The evaluation
+    compares memory-enabled and stateless configurations over a fixed set of
+    financial questions spanning numerical grounding, preference adherence,
+    and multi-turn memory retrieval. The experimental dataset contains
+    synthetic but realistic financial records with known ground truth,
+    enabling reproducible evaluation.
+    
+    \textbf{Results will be populated after completion of the experimental
+    evaluation.}
+    
+    \end{abstract}
+    
+    \begin{IEEEkeywords}
+    large language models, financial AI, personalization, memory,
+    grounded reasoning, Model Context Protocol, account aggregator,
+    financial question answering
+    \end{IEEEkeywords}
+    
+    % =========================================================
+    % 1. INTRODUCTION
+    % =========================================================
+    
+    \section{Introduction}
+    
+    Large language models (LLMs) have demonstrated strong capabilities in
+    natural language understanding, reasoning, and interactive assistance.
+    However, their usefulness in personal finance is constrained by two
+    fundamental limitations: lack of direct access to current financial
+    records and limited persistence of user-specific information.
+    
+    A user may ask questions such as ``How much did I spend on food last
+    month?'', ``Am I spending more than usual on subscriptions?'', or
+    ``Given my preference to keep an emergency fund of six months, how much
+    should I save this month?''. These questions require more than generic
+    financial knowledge. They require access to user-specific transaction
+    data, deterministic numerical computation, and knowledge of preferences
+    that may have been expressed during earlier interactions.
+    
+    Without external grounding, an LLM may produce plausible but incorrect
+    numerical values. Similarly, without persistent memory, an assistant may
+    know that a user previously expressed a financial preference but fail to
+    apply that preference in a later interaction.
+    
+    Recent work on LLM personalization has demonstrated the importance of
+    memory extraction, retrieval, and utilization. AlpsBench, for example,
+    evaluates personalization through tasks covering information extraction,
+    information update, information retrieval, and information utilization
+    \cite{alpsbench}. Its evaluation framework demonstrates that remembering
+    information and successfully applying it are distinct capabilities.
+    
+    Financial assistance introduces an additional requirement: responses
+    must be grounded in an external source of financial truth. This creates
+    an intersection between two problems:
+    
+    \begin{enumerate}
+        \item \textbf{Grounded financial reasoning:} obtaining accurate
+        financial facts from structured financial data.
+        \item \textbf{Personalized reasoning:} retrieving and applying
+        user-specific preferences and constraints across interactions.
+    \end{enumerate}
+    
+    Switch FI addresses these requirements through a hybrid architecture.
+    Financial state is computed using deterministic tools, while
+    personalization information is represented using structured explicit and
+    implicit memory. The resulting context is then supplied to an LLM through
+    an MCP interface.
+    
+    The central research question investigated in this work is:
+    
+    \begin{quote}
+    \textit{Does persistent user memory improve personalized financial
+    reasoning when the underlying financial facts are deterministically
+    grounded?}
+    \end{quote}
+    
+    This question is investigated using a controlled ablation between
+    memory-enabled and stateless configurations.
+    
+    \subsection{Contributions}
+    
+    This work makes the following contributions:
+    
+    \begin{itemize}
+    
+        \item We present the architecture of \textit{Switch FI}, an
+        LLM-agnostic MCP server for grounded personal financial assistance.
+    
+        \item We introduce a deterministic financial reasoning layer that
+        computes financial summaries from structured transaction records
+        rather than relying on LLM-generated numerical calculations.
+    
+        \item We implement a structured memory layer supporting both
+        explicit user preferences and implicitly inferred preferences.
+    
+        \item We define an evaluation protocol separating numerical
+        grounding, preference adherence, and multi-turn memory retrieval.
+    
+        \item We formulate a controlled memory ablation comparing identical
+        financial data and questions under memory-enabled and stateless
+        configurations.
+    
+    \end{itemize}
+    
+    % =========================================================
+    % 2. RELATED WORK
+    % =========================================================
+    
+    \section{Related Work}
+    
+    \subsection{LLM Personalization and Memory}
+    
+    Personalization in LLM systems has increasingly shifted from static
+    prompt-based personalization toward persistent memory mechanisms.
+    Recent benchmarks distinguish between systems that simply retrieve
+    historical context and systems that explicitly evaluate the lifecycle
+    of personalized information.
+    
+    AlpsBench evaluates four stages of personalization: personalized
+    information extraction, personalized information update, personalized
+    information retrieval, and personalized information utilization
+    \cite{alpsbench}. The benchmark further distinguishes multiple forms of
+    personalization, including preference following and constraint
+    following.
+    
+    This distinction is important for financial assistants. A system may
+    correctly remember that a user prefers conservative spending but still
+    fail to apply that preference when making a recommendation.
+    
+    Existing personalization research therefore motivates evaluating memory
+    not merely as storage, but as a mechanism that influences downstream
+    reasoning.
+    
+    \subsection{Financial LLM Grounding}
+    
+    LLM applications in finance introduce additional reliability concerns.
+    Financial questions frequently contain numerical quantities, temporal
+    constraints, and domain-specific terminology. Hallucinated values can
+    therefore result in materially incorrect conclusions.
+    
+    A common approach to hallucination mitigation is retrieval-augmented
+    generation, where external information is retrieved before generation.
+    However, financial assistance requires more than document retrieval.
+    Transaction-level information must often be aggregated, categorized, and
+    computed before it can be meaningfully provided to an LLM.
+    
+    Switch FI therefore separates deterministic financial computation from
+    language generation.
+    
+    \subsection{Consent-Based Financial Data Access}
+    
+    India's Account Aggregator ecosystem provides a consent-driven
+    architecture for accessing financial information from participating
+    financial institutions. This model enables financial information to be
+    shared with a requesting entity based on user authorization.
+    
+    Switch FI uses the Account Aggregator model as the data-access boundary.
+    For experimentation, the system uses a Finvu sandbox adapter and a
+    synthetic/mock data mode.
+    
+    This architecture separates:
+    
+    \begin{enumerate}
+        \item financial data acquisition,
+        \item financial computation,
+        \item personalization memory, and
+        \item natural-language reasoning.
+    \end{enumerate}
+    
+    \subsection{Research Gap}
+    
+    Existing personalization benchmarks primarily study general-purpose
+    conversational interactions, while financial LLM systems often focus on
+    grounding and hallucination reduction.
+    
+    Switch FI combines these dimensions by evaluating whether memory affects
+    personalized reasoning \textit{after} financial facts have been grounded
+    through deterministic computation.
+    
+    % =========================================================
+    % 3. SWITCH FI SYSTEM
+    % =========================================================
+    
+    \section{Switch FI System}
+    
+    \subsection{System Overview}
+    
+    Switch FI is designed as an intermediary between an LLM assistant and a
+    user's financial information.
+    
+    The architecture consists of four major layers:
+    
+    \begin{enumerate}
+        \item \textbf{Consent and data acquisition layer}
+        \item \textbf{Deterministic financial reasoning layer}
+        \item \textbf{Memory layer}
+        \item \textbf{MCP interface layer}
+    \end{enumerate}
+    
+    Figure~\ref{fig:architecture} presents the overall architecture.
+    
+    \begin{figure*}[t]
+        \centering
+        \includegraphics[
+            width=0.95\textwidth
+        ]{figures/system_architecture.pdf}
+        \caption{
+        Switch FI system architecture. Financial data is acquired through
+        a consent-based adapter, transformed into deterministic financial
+        summaries, combined with relevant user memory, and exposed to an
+        LLM through MCP tools.
+        }
+        \label{fig:architecture}
+    \end{figure*}
+    
+    \subsection{Consent and Data Acquisition}
+    
+    The financial data acquisition layer abstracts the underlying data
+    provider through an adapter interface.
+    
+    For production deployment, the adapter is intended to communicate with
+    the Account Aggregator ecosystem. During development and experimentation,
+    a mock adapter generates deterministic synthetic transaction data.
+    
+    The system supports two modes:
+    
+    \begin{equation}
+    D =
+    \begin{cases}
+    D_{\mathrm{mock}}, & \text{if MOCK\_MODE = true}\\
+    D_{\mathrm{AA}}, & \text{otherwise}
+    \end{cases}
+    \end{equation}
+    
+    where $D_{\mathrm{mock}}$ represents synthetic financial data and
+    $D_{\mathrm{AA}}$ represents data obtained through the Account Aggregator
+    integration.
+    
+    The mock dataset is generated with known ground truth so that numerical
+    answers can be evaluated without ambiguity.
+    
+    \subsection{Deterministic Financial Reasoning}
+    
+    A central design principle of Switch FI is that the LLM should not be
+    responsible for computing authoritative financial totals.
+    
+    Let the user's transaction dataset be
+    
+    \begin{equation}
+    T = \{t_1,t_2,\ldots,t_n\}.
+    \end{equation}
+    
+    Each transaction $t_i$ contains fields including amount, timestamp,
+    merchant, and category.
+    
+    A deterministic aggregation function computes a financial state:
+    
+    \begin{equation}
+    z = f(T),
+    \end{equation}
+    
+    where $z$ may contain:
+    
+    \begin{itemize}
+        \item total income,
+        \item total expenditure,
+        \item category-wise expenditure,
+        \item recurring expenses,
+        \item monthly summaries,
+        \item savings,
+        \item account balances, and
+        \item other derived financial quantities.
+    \end{itemize}
+    
+    The resulting structured output is then supplied to the LLM.
+    
+    This creates the following separation:
+    
+    \begin{equation}
+    \text{Financial Truth} \rightarrow
+    \text{Deterministic Computation} \rightarrow
+    \text{LLM Explanation}.
+    \end{equation}
+    
+    For transaction categorization, the system uses a regex/rule-based
+    strategy for deterministic matches, followed by an LLM fallback for
+    ambiguous transactions.
+    
+    \subsection{Memory Architecture}
+    
+    Switch FI maintains structured user memory independently from raw
+    financial transactions.
+    
+    For a user $u$, memory is represented as:
+    
+    \begin{equation}
+    M_u = \{m_1,m_2,\ldots,m_k\}.
+    \end{equation}
+    
+    Each memory record may contain:
+    
+    \begin{itemize}
+        \item memory content,
+        \item memory type,
+        \item source,
+        \item confidence,
+        \item creation timestamp,
+        \item update timestamp.
+    \end{itemize}
+    
+    We distinguish two memory categories.
+    
+    \subsubsection{Explicit Memory}
+    
+    Explicit memory represents information directly stated by the user.
+    
+    Examples include:
+    
+    \begin{itemize}
+        \item ``I want to maintain a six-month emergency fund.''
+        \item ``I prefer not to spend more than INR 5,000 on subscriptions.''
+        \item ``I am saving for a car.''
+    \end{itemize}
+    
+    \subsubsection{Implicit Memory}
+    
+    Implicit memory represents preferences or behavioral information inferred
+    from repeated interactions.
+    
+    Examples include recurring spending preferences or consistently
+    expressed financial constraints.
+    
+    The distinction between explicit and implicit memory is motivated by
+    prior work showing that real-world user interactions contain both direct
+    and indirect personalization signals \cite{alpsbench}.
+    
+    \subsection{Memory Retrieval}
+    
+    Given a user query $q$, the memory subsystem retrieves a relevant subset:
+    
+    \begin{equation}
+    R_q = R(M_u,q).
+    \end{equation}
+    
+    The final LLM context is therefore represented as:
+    
+    \begin{equation}
+    C = \{q,z,R_q\},
+    \end{equation}
+    
+    where:
+    
+    \begin{itemize}
+        \item $q$ is the user query,
+        \item $z$ is deterministic financial state, and
+        \item $R_q$ is retrieved personalized memory.
+    \end{itemize}
+    
+    The LLM generates the final response:
+    
+    \begin{equation}
+    y = LLM(C).
+    \end{equation}
+    
+    \subsection{Model Context Protocol Interface}
+    
+    Switch FI exposes financial and memory operations through the Model
+    Context Protocol (MCP).
+    
+    The MCP interface provides tools for operations such as:
+    
+    \begin{itemize}
+        \item retrieving financial summaries,
+        \item retrieving transactions,
+        \item calculating category expenditure,
+        \item querying monthly spending,
+        \item retrieving user memories,
+        \item storing explicit preferences,
+        \item updating memory, and
+        \item obtaining financial context for reasoning.
+    \end{itemize}
+    
+    This makes the financial infrastructure independent of the specific
+    LLM client.
+    
+    % =========================================================
+    % 4. EVALUATION FRAMEWORK
+    % =========================================================
+    
+    \section{Evaluation Framework}
+    
+    \subsection{Research Questions}
+    
+    The evaluation is organized around four research questions.
+    
+    \textbf{RQ1:} Does persistent memory improve preference adherence in
+    personalized financial responses?
+    
+    \textbf{RQ2:} Does memory affect numerical grounding accuracy when
+    financial facts are deterministically computed?
+    
+    \textbf{RQ3:} Does persistent memory improve retrieval of information
+    expressed earlier in a conversation?
+    
+    \textbf{RQ4:} Does memory change the confidence or calibration behavior
+    of the LLM when answering financial questions?
+    
+    \subsection{Dataset Construction}
+    
+    The evaluation uses a synthetic but realistic financial dataset generated
+    through the Switch FI mock adapter.
+    
+    Each synthetic user is associated with one or more financial accounts
+    containing transactions across multiple months.
+    
+    \begin{table}[t]
+    \centering
+    \caption{Evaluation Dataset Configuration}
+    \label{tab:dataset}
+    \begin{tabular}{lc}
+    \toprule
+    \textbf{Property} & \textbf{Value} \\
+    \midrule
+    Number of users & [TBD] \\
+    Number of accounts & [TBD] \\
+    Number of months & [TBD] \\
+    Number of transactions & [TBD] \\
+    Number of categories & [TBD] \\
+    Evaluation questions & [TBD] \\
+    Known ground truth & Yes \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+    
+    The dataset is intentionally constructed so that every numerical
+    quantity required by an evaluation question has a known ground-truth
+    value.
+    
+    \subsection{Evaluation Configurations}
+    
+    The primary experiment is an ablation comparing two configurations.
+    
+    \begin{table}[t]
+    \centering
+    \caption{Experimental Configurations}
+    \label{tab:ablation}
+    \begin{tabular}{lll}
+    \toprule
+    \textbf{Configuration} & \textbf{Memory} & \textbf{Financial Tools} \\
+    \midrule
+    Memory-Off & Disabled & Enabled \\
+    Memory-On & Enabled & Enabled \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+    
+    Both configurations use:
+    
+    \begin{itemize}
+        \item identical financial datasets,
+        \item identical question sets,
+        \item identical deterministic financial tools,
+        \item identical LLM,
+        \item identical system instructions.
+    \end{itemize}
+    
+    The only manipulated variable is persistent memory availability.
+    
+    The evaluation model is:
+    
+    \begin{equation}
+    \text{Claude Haiku 4.5 via OpenRouter}
+    \end{equation}
+    
+    with the exact model identifier to be reported in the final experiment.
+    
+    \subsection{Evaluation Tasks}
+    
+    The question set contains approximately 30--50 fixed questions divided
+    into three primary task categories.
+    
+    \begin{table*}[t]
+    \centering
+    \caption{Evaluation Task Categories}
+    \label{tab:tasks}
+    \begin{tabular}{p{0.22\textwidth}p{0.35\textwidth}p{0.30\textwidth}}
+    \toprule
+    \textbf{Task} & \textbf{Description} & \textbf{Example} \\
+    \midrule
+    
+    Numerical Grounding &
+    Tests whether the assistant returns the correct numerical value derived
+    from financial records. &
+    ``How much did I spend on food last month?'' \\
+    
+    Preference Adherence &
+    Tests whether stored financial preferences influence recommendations. &
+    ``How much should I allocate to discretionary spending given my savings
+    goal?'' \\
+    
+    Memory Retrieval &
+    Tests whether information introduced earlier is correctly recalled and
+    used in a later interaction. &
+    ``What savings goal did I tell you I was working toward?'' \\
+    
+    \bottomrule
+    \end{tabular}
+    \end{table*}
+    
+    \subsubsection{Task 1: Numerical Grounding}
+    
+    For a financial query $q$, the system produces an answer $\hat{a}$.
+    The expected numerical answer is obtained from deterministic ground
+    truth $a^*$.
+    
+    The numerical evaluation therefore measures:
+    
+    \begin{equation}
+    Acc_{\mathrm{num}}
+    =
+    \frac{
+    \sum_{i=1}^{N}
+    \mathbb{1}[\hat{a}_i = a_i^*]
+    }{
+    N
+    }.
+    \end{equation}
+    
+    For values where rounding or formatting differences are expected, an
+    absolute tolerance $\epsilon$ may be used:
+    
+    \begin{equation}
+    \mathbb{1}
+    [
+    |\hat{a}_i-a_i^*| \leq \epsilon
+    ].
+    \end{equation}
+    
+    \subsubsection{Task 2: Preference Adherence}
+    
+    Preference adherence evaluates whether the response respects a known
+    user preference or constraint.
+    
+    For question $q_i$ with expected preference behavior $p_i$, let
+    
+    \begin{equation}
+    A_i =
+    \begin{cases}
+    1 & \text{if the response satisfies } p_i,\\
+    0 & \text{otherwise}.
+    \end{cases}
+    \end{equation}
+    
+    Preference adherence rate is:
+    
+    \begin{equation}
+    PAR =
+    \frac{1}{N}
+    \sum_{i=1}^{N} A_i.
+    \end{equation}
+    
+    \subsubsection{Task 3: Memory Retrieval}
+    
+    For multi-turn questions, the assistant must retrieve information
+    introduced in an earlier interaction.
+    
+    Let $m^*$ denote the ground-truth memory and $\hat{m}$ the information
+    used by the model.
+    
+    Memory retrieval accuracy is:
+    
+    \begin{equation}
+    Acc_{\mathrm{mem}}
+    =
+    \frac{
+    \sum_{i=1}^{N}
+    \mathbb{1}[\hat{m}_i = m_i^*]
+    }{
+    N
+    }.
+    \end{equation}
+    
+    Semantic matching may additionally be used where exact lexical matching
+    is inappropriate.
+    
+    \subsection{Confidence Calibration}
+    
+    The assistant may additionally be asked to provide a confidence label
+    for each answer.
+    
+    Let $c_i$ denote the predicted confidence and $r_i$ indicate whether the
+    answer is correct.
+    
+    The relationship between confidence and correctness will be analyzed
+    using:
+    
+    \begin{equation}
+    Calibration =
+    \frac{1}{N}
+    \sum_{i=1}^{N}
+    |c_i-r_i|.
+    \end{equation}
+    
+    Lower values indicate closer agreement between stated confidence and
+    observed correctness.
+    
+    % =========================================================
+    % 5. EXPERIMENTAL RESULTS
+    % =========================================================
+    
+    \section{Experimental Results}
+    
+    \subsection{Overall Results}
+    
+    The primary comparison between memory-enabled and memory-disabled
+    configurations is shown in Table~\ref{tab:results}.
+    
+    \begin{table}[t]
+    \centering
+    \caption{Overall Evaluation Results}
+    \label{tab:results}
+    \begin{tabular}{lcc}
+    \toprule
+    \textbf{Metric} & \textbf{Memory-Off} & \textbf{Memory-On} \\
+    \midrule
+    Numerical Accuracy & [TBD] & [TBD] \\
+    Preference Adherence & [TBD] & [TBD] \\
+    Memory Retrieval & [TBD] & [TBD] \\
+    Confidence Calibration & [TBD] & [TBD] \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+    
+    \textbf{Important:} all values in this section remain placeholders until
+    the experimental harness has been executed.
+    
+    \subsection{Numerical Grounding}
+    
+    The numerical grounding experiment measures whether introducing memory
+    changes the model's ability to answer questions whose ground truth is
+    derived from deterministic financial aggregation.
+    
+    \begin{table}[t]
+    \centering
+    \caption{Numerical Grounding Performance}
+    \label{tab:numerical}
+    \begin{tabular}{lccc}
+    \toprule
+    \textbf{Category} & \textbf{Off} & \textbf{On} & \textbf{$\Delta$} \\
+    \midrule
+    Income & [TBD] & [TBD] & [TBD] \\
+    Expenses & [TBD] & [TBD] & [TBD] \\
+    Categories & [TBD] & [TBD] & [TBD] \\
+    Savings & [TBD] & [TBD] & [TBD] \\
+    Overall & [TBD] & [TBD] & [TBD] \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+    
+    \subsection{Preference Adherence}
+    
+    The second experiment evaluates whether persistent memory improves the
+    assistant's ability to follow financial preferences.
+    
+    \begin{table}[t]
+    \centering
+    \caption{Preference Adherence Results}
+    \label{tab:preference}
+    \begin{tabular}{lccc}
+    \toprule
+    \textbf{Preference Type} & \textbf{Off} & \textbf{On} & \textbf{$\Delta$} \\
+    \midrule
+    Budget Constraint & [TBD] & [TBD] & [TBD] \\
+    Savings Goal & [TBD] & [TBD] & [TBD] \\
+    Spending Preference & [TBD] & [TBD] & [TBD] \\
+    Risk Preference & [TBD] & [TBD] & [TBD] \\
+    Overall & [TBD] & [TBD] & [TBD] \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+    
+    \subsection{Memory Retrieval}
+    
+    Memory retrieval evaluates whether information introduced in an earlier
+    turn is correctly used in a subsequent financial question.
+    
+    \begin{table}[t]
+    \centering
+    \caption{Multi-Turn Memory Retrieval}
+    \label{tab:memory}
+    \begin{tabular}{lccc}
+    \toprule
+    \textbf{Task} & \textbf{Off} & \textbf{On} & \textbf{$\Delta$} \\
+    \midrule
+    Explicit Memory & [TBD] & [TBD] & [TBD] \\
+    Implicit Memory & [TBD] & [TBD] & [TBD] \\
+    Multi-Hop Recall & [TBD] & [TBD] & [TBD] \\
+    Overall & [TBD] & [TBD] & [TBD] \\
+    \bottomrule
+    \end{tabular}
+    \end{table}
+    
+    \subsection{Ablation Analysis}
+    
+    The principal ablation compares the same model under two memory
+    conditions.
+    
+    The relative improvement of memory-enabled reasoning is calculated as:
+    
+    \begin{equation}
+    \Delta_{\mathrm{rel}}
+    =
+    \frac{
+    Score_{\mathrm{on}}-Score_{\mathrm{off}}
+    }{
+    Score_{\mathrm{off}}
+    }
+    \times 100.
+    \end{equation}
+    
+    \begin{figure}[t]
+        \centering
+        \includegraphics[
+            width=\columnwidth
+        ]{figures/evaluation_pipeline.pdf}
+        \caption{
+        Evaluation pipeline comparing memory-enabled and memory-disabled
+        Switch FI configurations using identical financial data and question
+        sets.
+        }
+        \label{fig:evaluation}
+    \end{figure}
+    
+    % =========================================================
+    % 6. DISCUSSION
+    % =========================================================
+    
+    \section{Discussion}
+    
+    \subsection{Does Memory Improve Financial Personalization?}
+    
+    The primary purpose of the experiment is to determine whether persistent
+    memory improves personalized financial reasoning.
+    
+    If the Memory-On configuration produces a higher preference adherence
+    rate while maintaining comparable numerical accuracy, this would suggest
+    that memory primarily improves personalization rather than financial
+    grounding itself.
+    
+    \textbf{Observed result: [TBD after evaluation].}
+    
+    \subsection{Memory Versus Financial Grounding}
+    
+    The architecture deliberately separates memory from financial grounding.
+    
+    Deterministic financial tools provide:
+    
+    \begin{equation}
+    \text{Ground Truth}_{financial}
+    \end{equation}
+    
+    while memory provides:
+    
+    \begin{equation}
+    \text{Context}_{personal}.
+    \end{equation}
+    
+    The LLM combines these two sources during response generation.
+    
+    This distinction allows the experiment to determine whether memory
+    introduces improvements independently of numerical grounding.
+    
+    \subsection{Comparison With Existing Personalization Benchmarks}
+    
+    The evaluation design is inspired by the observation in recent
+    personalization benchmarks that remembering information and utilizing
+    that information are separate capabilities \cite{alpsbench}.
+    
+    Unlike general conversational personalization benchmarks, Switch FI
+    introduces a deterministic financial state as an additional source of
+    ground truth.
+    
+    The resulting evaluation can therefore be viewed as:
+    
+    \begin{equation}
+    \text{Personalization}
+    +
+    \text{Grounded Financial Reasoning}.
+    \end{equation}
+    
+    This combination is the central distinction of the proposed framework.
+    
+    \subsection{Potential Failure Modes}
+    
+    Several failure modes are expected to be particularly relevant:
+    
+    \begin{enumerate}
+    
+        \item The model retrieves the correct memory but fails to apply it.
+    
+        \item The model applies a preference that conflicts with newer
+        information.
+    
+        \item The model correctly retrieves financial data but performs
+        incorrect reasoning over the values.
+    
+        \item The model generates unsupported numerical values despite
+        receiving deterministic tool output.
+    
+        \item Implicit memory is inferred incorrectly from limited evidence.
+    
+    \end{enumerate}
+    
+    These failure modes should be analyzed separately rather than collapsing
+    all errors into a single accuracy value.
+    
+    % =========================================================
+    % 7. LIMITATIONS
+    % =========================================================
+    
+    \section{Limitations}
+    
+    This study has several limitations.
+    
+    \subsection{Synthetic Evaluation Data}
+    
+    The experimental financial dataset is generated synthetically.
+    Although the dataset is designed to resemble realistic financial
+    transactions, it does not represent the complete variability of
+    real-world banking data.
+    
+    \subsection{Sandbox Data Access}
+    
+    The current implementation uses the Finvu sandbox and a mock adapter
+    rather than production financial accounts.
+    
+    Consequently, the evaluation does not establish the operational
+    performance of the system against production-scale banking data.
+    
+    \subsection{Limited Model Coverage}
+    
+    The initial evaluation uses a single LLM configuration. Results may
+    therefore depend on model-specific reasoning and instruction-following
+    behavior.
+    
+    Future experiments should evaluate multiple models under identical
+    conditions.
+    
+    \subsection{Evaluation Scale}
+    
+    The current evaluation uses a relatively small fixed question set.
+    Although this provides controlled paired comparisons, a larger dataset
+    would provide stronger statistical confidence.
+    
+    \subsection{Automated Evaluation}
+    
+    Some evaluation metrics rely on automated grading or deterministic
+    matching. Human evaluation may be required for ambiguous cases involving
+    preference interpretation and financial recommendations.
+    
+    % =========================================================
+    % 8. CONCLUSION
+    % =========================================================
+    
+    \section{Conclusion}
+    
+    This paper presented Switch FI, an MCP-based architecture for
+    memory-augmented and financially grounded LLM assistance.
+    
+    The system separates financial truth from language generation by
+    performing deterministic aggregation over structured transaction data,
+    while a persistent memory layer provides user-specific preferences and
+    context.
+    
+    We introduced an evaluation framework that compares memory-enabled and
+    stateless configurations across numerical grounding, preference
+    adherence, and multi-turn memory retrieval.
+    
+    The final experimental results will determine whether persistent memory
+    provides measurable improvements in personalized financial reasoning
+    without degrading numerical grounding.
+    
+    \textbf{Final empirical finding: [TBD].}
+    
+    Future work includes integration with production Account Aggregator
+    credentials, evaluation across multiple LLMs, larger real-world user
+    studies, improved implicit-memory handling, and deployment of Switch FI
+    as a production financial MCP service.
+    
+    % =========================================================
+    % ACKNOWLEDGMENTS
+    % =========================================================
+    
+    \section*{Acknowledgment}
+    
+    The authors thank [Institution / Organization / Individuals] for
+    supporting this work.
+    
+    % =========================================================
+    % REFERENCES
+    % =========================================================
+    
+    \bibliographystyle{IEEEtran}
+    \bibliography{references}
+    
+    \end{document}
