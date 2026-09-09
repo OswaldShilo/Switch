@@ -24,8 +24,8 @@ export interface MockDataset {
   transactions: MockTransaction[];
 }
 
-const MONTHS = 6;
-const SPIKE_MONTH_INDEX = 3;
+const MONTHS = 12;
+const SPIKE_MONTH_INDEX = 9;
 const SPIKE_EXTRA_COUNT = 28;
 const REGULAR_EVERYDAY_COUNT = 54;
 
