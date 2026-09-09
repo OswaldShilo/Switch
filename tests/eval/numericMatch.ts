@@ -4,7 +4,7 @@
 // arithmetic, so the number in the text should be the tool's output verbatim modulo
 // formatting/rounding — a small tolerance (default ₹5) covers rounding-to-rupee display.
 export function replyContainsAmount(reply: string, expectedAmount: number, toleranceRupees = 5): boolean {
-  const matches = reply.match(/[\d,]+(?:\.\d+)?/g) ?? [];
+  const matches = reply.match(/[\d,]+(?:\.\d+)?(?!\s*%)/g) ?? [];
   const numbers = matches
     .map((m) => Number(m.replace(/,/g, '')))
     .filter((n) => !Number.isNaN(n));

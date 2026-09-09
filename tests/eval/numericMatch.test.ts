@@ -11,6 +11,9 @@ describe('replyContainsAmount', () => {
   it('rejects when no close number is present', () => {
     expect(replyContainsAmount('You spent ₹5,000 on Food Delivery.', 12340)).toBe(false);
   });
+  it('does not treat a percent figure as a matching amount', () => {
+    expect(replyContainsAmount('Your savings rate was 23%.', 23)).toBe(false);
+  });
 });
 
 describe('replyContainsPercent', () => {
