@@ -3,10 +3,19 @@
 // Grounding replies come from a system prompt that forbids the model doing its own
 // arithmetic, so the number in the text should be the tool's output verbatim modulo
 // formatting/rounding — a small tolerance (default ₹5) covers rounding-to-rupee display.
+// Numbers immediately followed by "%" (a percent figure, not a rupee amount) are excluded
+// by checking the substring after each match on the original string — NOT via a regex
+// lookahead, because a greedy quantifier backtracks to satisfy a trailing negative
+// lookahead, silently truncating the number instead of excluding it (e.g. "23%" would
+// wrongly still match as "2").
 export function replyContainsAmount(reply: string, expectedAmount: number, toleranceRupees = 5): boolean {
-  const matches = reply.match(/[\d,]+(?:\.\d+)?(?!\s*%)/g) ?? [];
+  const matches = [...reply.matchAll(/[\d,]+(?:\.\d+)?/g)];
   const numbers = matches
-    .map((m) => Number(m.replace(/,/g, '')))
+    .filter((m) => {
+      const after = reply.slice(m.index + m[0].length);
+      return !/^\s*%/.test(after);
+    })
+    .map((m) => Number(m[0].replace(/,/g, '')))
     .filter((n) => !Number.isNaN(n));
   return numbers.some((n) => Math.abs(n - expectedAmount) <= toleranceRupees);
 }

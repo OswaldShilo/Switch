@@ -14,6 +14,10 @@ describe('replyContainsAmount', () => {
   it('does not treat a percent figure as a matching amount', () => {
     expect(replyContainsAmount('Your savings rate was 23%.', 23)).toBe(false);
   });
+  it('does not let a percent figure produce a truncated false-positive match', () => {
+    expect(replyContainsAmount('Your growth rate was 23% this month.', 2)).toBe(false);
+    expect(replyContainsAmount('Your savings rate was 100%.', 10)).toBe(false);
+  });
 });
 
 describe('replyContainsPercent', () => {
