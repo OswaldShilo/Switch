@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import OpenAI from 'openai';
 
 // Same client-construction pattern as backend/core/src/categorize/llmFallback.ts —

@@ -1,27 +1,5 @@
-import fs from 'fs';
 import jwt from 'jsonwebtoken';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { vi } from 'vitest';
-
-// Load .env files for tests
-function loadEnvFile(envPath: string) {
-  if (!fs.existsSync(envPath)) return;
-  const content = fs.readFileSync(envPath, 'utf-8');
-  content.split('\n').forEach((line) => {
-    const [key, ...valueParts] = line.split('=');
-    if (key && !key.startsWith('#')) {
-      const value = valueParts.join('=').trim();
-      if (!process.env[key]) {
-        process.env[key] = value;
-      }
-    }
-  });
-}
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-loadEnvFile(path.join(__dirname, '.env'));
-loadEnvFile(path.join(__dirname, '..', 'backend', 'core', '.env'));
 
 // requireUser.ts verifies bearer tokens via Supabase's real Auth API
 // (auth.getUser), since this project signs tokens with an asymmetric key that
