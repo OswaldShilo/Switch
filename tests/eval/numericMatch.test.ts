@@ -18,6 +18,9 @@ describe('replyContainsAmount', () => {
     expect(replyContainsAmount('Your growth rate was 23% this month.', 2)).toBe(false);
     expect(replyContainsAmount('Your savings rate was 100%.', 10)).toBe(false);
   });
+  it('still finds a real amount when an unrelated percent figure appears nearby', () => {
+    expect(replyContainsAmount('Amount was 230 (23% up).', 230)).toBe(true);
+  });
 });
 
 describe('replyContainsPercent', () => {
