@@ -1,5 +1,4 @@
 import { summarizeFinances } from '../../backend/core/src/adapter/summarize.js';
-import { recallMemories } from '../../backend/core/src/adapter/memory.js';
 import { replyContainsAmount, replyContainsPercent } from './numericMatch.js';
 import { judgePreference } from './judge.js';
 import type { EvalQuestion } from './types.js';
@@ -59,11 +58,17 @@ function scoreRecall(question: EvalQuestion, run: QuestionRun): QuestionScore {
 async function scoreHygiene(question: EvalQuestion, run: QuestionRun, accountId: string, userId: string): Promise<QuestionScore> {
   if (question.hygieneVariant === 'delete') {
     const stillMentions = run.reply.toLowerCase().includes(question.deletedFactSubstring!.toLowerCase());
-    const recalled = await recallMemories({ userId, limit: 20 });
-    const stillStored =
-      recalled.ok && recalled.data.some((m) => m.content.toLowerCase().includes(question.deletedFactSubstring!.toLowerCase()));
-    const pass = !stillMentions && !stillStored;
-    return { id: question.id, category: question.category, pass, detail: `deleted fact leaked in reply=${stillMentions}, still in DB=${stillStored}` };
+    // Deletion is verified in runner.ts immediately after deleteMemory, BEFORE the final
+    // (memory-enabled) question turn — that turn can itself call `remember` on unrelated
+    // content, which would otherwise be mistaken here for a failed deletion.
+    const deleteVerified = run.hygieneDeleteVerified === true;
+    const pass = !stillMentions && deleteVerified;
+    return {
+      id: question.id,
+      category: question.category,
+      pass,
+      detail: `deleted fact leaked in reply=${stillMentions}, deletion verified=${deleteVerified}`,
+    };
   }
 
   // 'stale' variant: correctness is judged the same way as grounding — the reply must

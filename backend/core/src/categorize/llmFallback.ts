@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { OPENROUTER_MODELS } from '../llm/models.js';
 import { CATEGORIES } from './taxonomy.js';
 
 export interface UncategorizedTxn {
@@ -22,7 +23,7 @@ export const classifyBatchWithClaude: ClassifyBatchFn = async (txns) => {
     baseURL: 'https://openrouter.ai/api/v1',
   });
   const completion = await client.chat.completions.create({
-    model: 'anthropic/claude-haiku-4.5',
+    model: OPENROUTER_MODELS[0],
     max_tokens: 2048,
     messages: [
       {
@@ -33,6 +34,9 @@ export const classifyBatchWithClaude: ClassifyBatchFn = async (txns) => {
           `Transactions: ${JSON.stringify(txns)}`,
       },
     ],
+    // @ts-expect-error extra_body is OpenRouter's extension for model fallbacks, not part
+    // of the openai package's typed request shape — see backend/core/src/llm/models.ts.
+    extra_body: { models: OPENROUTER_MODELS },
   });
   const text = completion.choices[0].message.content ?? '';
   const parsed = JSON.parse(text) as Array<{ txn_id: string; category: string; confidence: number }>;

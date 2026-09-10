@@ -1,9 +1,10 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
+import { OPENROUTER_MODELS } from '../../backend/core/src/llm/models.js';
 
 // Same client-construction pattern as backend/core/src/categorize/llmFallback.ts —
-// OpenRouter's OpenAI-compatible API, Haiku 4.5, since no direct Anthropic key is
-// available for this deployment.
+// OpenRouter's OpenAI-compatible API, Haiku 4.5 primary + fallbacks, since no direct
+// Anthropic key is available for this deployment.
 export async function judgePreference(reply: string, rubric: string): Promise<{ pass: boolean; reasoning: string }> {
   const client = new OpenAI({
     apiKey: process.env.OPEN_ROUTER_API_KEY,
@@ -11,7 +12,7 @@ export async function judgePreference(reply: string, rubric: string): Promise<{ 
   });
 
   const completion = await client.chat.completions.create({
-    model: 'anthropic/claude-haiku-4.5',
+    model: OPENROUTER_MODELS[0],
     max_tokens: 256,
     messages: [
       {
@@ -23,6 +24,9 @@ export async function judgePreference(reply: string, rubric: string): Promise<{ 
           `Return only a JSON object: {"pass": true|false, "reasoning": "<one sentence>"}.`,
       },
     ],
+    // @ts-expect-error extra_body is OpenRouter's extension for model fallbacks, not part
+    // of the openai package's typed request shape.
+    extra_body: { models: OPENROUTER_MODELS },
   });
 
   let text = completion.choices[0].message.content ?? '{}';

@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { db } from '../db/client.js';
 import { chatMessages } from '../db/schema.js';
+import { OPENROUTER_MODELS } from '../llm/models.js';
 import { CHAT_TOOLS } from './toolRegistry.js';
 import { SYSTEM_PROMPT, SYSTEM_PROMPT_NO_MEMORY } from './systemPrompt.js';
 
@@ -73,10 +74,13 @@ export const askClaudeWithOpenRouter: AskClaudeFn = async ({ system, messages, t
   }));
 
   const completion = await client.chat.completions.create({
-    model: 'anthropic/claude-haiku-4.5',
+    model: OPENROUTER_MODELS[0],
     max_tokens: 1024,
     messages: openAiMessages,
     tools: openAiTools,
+    // @ts-expect-error extra_body is OpenRouter's extension for model fallbacks, not part
+    // of the openai package's typed request shape — see backend/core/src/llm/models.ts.
+    extra_body: { models: OPENROUTER_MODELS },
   });
 
   const choice = completion.choices[0].message;
