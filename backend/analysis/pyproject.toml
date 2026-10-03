@@ -1,0 +1,35 @@
+[project]
+name = "switch-analysis"
+version = "0.1.0"
+description = "Python ML and analytics service for Switch financial intelligence"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.28.0",
+    "sqlalchemy>=2.0.28",
+    "psycopg2-binary>=2.9.9",
+    "psycopg[binary]>=3.1.18",
+    "alembic>=1.13.1",
+    "pydantic>=2.6.4",
+    "pydantic-settings>=2.2.1",
+    "pandas>=2.2.1",
+    "scipy>=1.12.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+ml = [
+    "statsforecast>=1.7.0",
+    "openai>=1.14.0",
+    "langchain>=0.1.13",
+    "langgraph>=0.0.30",
+]
+dev = [
+    "pytest>=8.1.1",
+    "pytest-asyncio>=0.23.6",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

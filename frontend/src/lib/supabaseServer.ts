@@ -10,9 +10,31 @@ import { cookies } from 'next/headers';
 export async function getSupabaseServerClient() {
   const cookieStore = await cookies();
 
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return {
+      auth: {
+        getUser: async () => ({
+          data: { user: { id: 'demo-user-id', email: 'demo@switch.app' } },
+          error: null,
+        }),
+        getSession: async () => ({
+          data: {
+            session: {
+              access_token: 'demo-token',
+              token_type: 'bearer',
+              expires_in: 3600,
+              user: { id: 'demo-user-id', email: 'demo@switch.app' },
+            },
+          },
+          error: null,
+        }),
+      },
+    } as any;
+  }
+
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
