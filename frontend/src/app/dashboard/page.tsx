@@ -4,7 +4,11 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { apiGet } from '@/lib/apiClient';
 import { getAccessToken, getFirstAccount } from '@/lib/dashboardData';
+import { fetchAnomalies, fetchForecasts } from '@/lib/analysisClient';
 import { MomTrendChart, type MomTrendPoint } from './MomTrendChart';
+import { RunAnalysisButton } from '@/components/RunAnalysisButton';
+import { AnomalyAlerts } from '@/components/AnomalyAlerts';
+import { ForecastCard } from '@/components/ForecastCard';
 
 function currentMonthRange(): { from: string; to: string } {
   const now = new Date();
@@ -37,10 +41,16 @@ export default async function OverviewPage() {
   }
 
   const { from, to } = currentMonthRange();
-  const summary = await apiGet<SummaryResponse>(
-    `/api/accounts/${account.accountId}/summary?metrics=income,savings_rate,mom_trend&from=${from}&to=${to}`,
-    accessToken
-  );
+  
+  // Parallel fetch: Core backend summary + ML Analytics results
+  const [summary, anomalies, forecasts] = await Promise.all([
+    apiGet<SummaryResponse>(
+      `/api/accounts/${account.accountId}/summary?metrics=income,savings_rate,mom_trend&from=${from}&to=${to}`,
+      accessToken
+    ),
+    fetchAnomalies(account.accountId),
+    fetchForecasts(account.accountId),
+  ]);
 
   const income = summary.income as string | undefined;
   const savingsRate = summary.savingsRate as number | undefined;
@@ -49,13 +59,20 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Overview</h1>
-        <p className="text-sm text-muted-foreground">
-          {account.bank} · {account.maskedNumber}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Overview</h1>
+          <p className="text-sm text-muted-foreground">
+            {account.bank} · {account.maskedNumber}
+          </p>
+        </div>
+        <RunAnalysisButton accountId={account.accountId} />
       </div>
 
+      {/* ML Anomaly Alerts Banner */}
+      <AnomalyAlerts anomalies={anomalies} />
+
+      {/* Financial KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
@@ -85,6 +102,10 @@ export default async function OverviewPage() {
         </Card>
       </div>
 
+      {/* ML Forecast Card */}
+      <ForecastCard forecasts={forecasts} />
+
+      {/* Historical Trend Chart */}
       <Card>
         <CardHeader>
           <CardTitle>Spending trend (month over month)</CardTitle>
